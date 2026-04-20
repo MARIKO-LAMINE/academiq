@@ -1,0 +1,112 @@
+{% extends 'base_parent.html' %}
+{% block title %}Suivi {{ enfant.get_full_name }} ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'parent:dashboard' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <div class="flex-grow-1">
+        <h4 class="fw-bold mb-0">{{ enfant.get_full_name }}</h4>
+        {% if inscription %}<small class="text-muted">{{ inscription.classe.nom }} &mdash; {{ annee_active.libelle }}</small>{% endif %}
+    </div>
+    <a href="{% url 'parent:edt_enfant' enfant.pk %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-calendar-week me-1"></i>Emploi du temps
+    </a>
+</div>
+<div class="row g-3">
+    <!-- Notes recentes -->
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold"><i class="bi bi-pencil-square me-2"></i>Notes recentes</div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light"><tr><th>Matiere</th><th>Note</th><th>Periode</th></tr></thead>
+                    <tbody>
+                        {% for n in notes %}
+                        <tr>
+                            <td>{{ n.cours.matiere.nom_matiere }}</td>
+                            <td><span class="badge {% if n.valeur >= 10 %}bg-success{% else %}bg-danger{% endif %}">{{ n.valeur }}/20</span></td>
+                            <td class="text-muted">{{ n.periode.nom }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">Aucune note.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Absences -->
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold"><i class="bi bi-person-x me-2"></i>Absences recentes</div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light"><tr><th>Matiere</th><th>Date</th><th>Statut</th></tr></thead>
+                    <tbody>
+                        {% for a in absences %}
+                        <tr>
+                            <td>{{ a.cours.matiere.nom_matiere }}</td>
+                            <td>{{ a.date_absence|date:"d/m/Y" }}</td>
+                            <td>{% if a.statut == 'en_attente' %}<span class="badge bg-secondary">En attente</span>
+                                {% elif a.statut == 'justifiee' %}<span class="badge bg-success">Justifiee</span>
+                                {% else %}<span class="badge bg-danger">Non justifiee</span>{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">Aucune absence.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Moyennes -->
+    {% if resultats %}
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold"><i class="bi bi-bar-chart me-2"></i>Moyennes par matiere</div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light"><tr><th>Matiere</th><th>Periode</th><th>Moyenne</th></tr></thead>
+                    <tbody>
+                        {% for r in resultats %}
+                        <tr>
+                            <td class="fw-semibold">{{ r.cours.matiere.nom_matiere }}</td>
+                            <td class="text-muted">{{ r.periode.nom }}</td>
+                            <td><span class="badge {% if r.moyenne >= 10 %}bg-success{% else %}bg-danger{% endif %}">{{ r.moyenne }}/20</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <!-- Bulletins -->
+    {% if bulletins %}
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold"><i class="bi bi-file-earmark-text me-2"></i>Bulletins</div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for b in bulletins %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">{{ b.periode.nom }}</div>
+                            <small class="text-muted">{{ b.periode.annee.libelle }}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            {% if b.moyenne_generale is not None %}
+                            <span class="badge {% if b.moyenne_generale >= 10 %}bg-success{% else %}bg-danger{% endif %}">{{ b.moyenne_generale }}/20</span>
+                            {% endif %}
+                            <a href="{% url 'parent:detail_bulletin' enfant.pk b.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

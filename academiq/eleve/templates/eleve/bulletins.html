@@ -1,0 +1,35 @@
+{% extends 'base_eleve.html' %}
+{% block title %}Mes bulletins ACADEMIQ{% endblock %}
+{% block content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Mes bulletins</h4>
+{% if bulletins %}
+<div class="row g-3">
+    {% for b in bulletins %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-1">{{ b.periode.nom }}</h6>
+                <small class="text-muted d-block mb-3">{{ b.periode.annee.libelle }}</small>
+                {% if b.moyenne_generale is not None %}
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge fs-5 {% if b.moyenne_generale >= 10 %}bg-success{% else %}bg-danger{% endif %}">{{ b.moyenne_generale }}/20</span>
+                    <span class="text-muted small">Moyenne generale</span>
+                </div>
+                {% if b.rang %}<div class="text-muted small mb-2">Rang : {{ b.rang }}</div>{% endif %}
+                {% endif %}
+                {% if b.appreciation %}<p class="text-muted small fst-italic">{{ b.appreciation }}</p>{% endif %}
+                <a href="{% url 'eleve:detail_bulletin' b.pk %}" class="btn btn-sm btn-primary w-100">
+                    <i class="bi bi-eye me-1"></i>Voir le bulletin
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card border-0"><div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-text fs-1 d-block mb-3 opacity-25"></i>
+    Aucun bulletin disponible pour le moment.
+</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+# ============================================================
+# ACADEMIQ V3 — Dépendances Python
+# Projet : Système de Gestion des Activités Scolaires
+# Stack  : Django + MariaDB + HTML/CSS/Bootstrap
+# ============================================================
+
+# --- Framework principal ---
+Django>=4.2,<5.0
+
+# --- Connecteur base de données MariaDB/MySQL ---
+mysqlclient>=2.2.0
+
+# --- Gestion des mots de passe (bcrypt) ---
+bcrypt>=4.0.0
+django[argon2]
+
+# --- Gestion des images (photos de profil) ---
+Pillow>=10.0.0
+
+# --- Export PDF (bulletins) ---
+reportlab>=4.0.0
+xhtml2pdf>=0.2.11
+
+# --- Variables d'environnement (.env) ---
+python-dotenv>=1.0.0
+
+# --- Formulaires Bootstrap (rendu automatique) ---
+django-crispy-forms>=2.0
+crispy-bootstrap5>=0.7
+
+# --- Pagination avancée ---
+django-pure-pagination>=0.3.0
+
+# --- Outils de développement ---
+django-debug-toolbar>=4.2.0
+
+# --- Tests ---
+pytest>=7.4.0
+pytest-django>=4.7.0
+factory-boy>=3.3.0
+
+# ============================================================
+# INSTALLATION :
+#   pip install -r requirements.txt
+#
+# CONFIGURATION bcrypt dans settings.py :
+#   PASSWORD_HASHERS = [
+#       'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+#   ]
+#
+# CONFIGURATION crispy_forms dans settings.py :
+#   INSTALLED_APPS += ['crispy_forms', 'crispy_bootstrap5']
+#   CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
+#   CRISPY_TEMPLATE_PACK = 'bootstrap5'
+# ============================================================

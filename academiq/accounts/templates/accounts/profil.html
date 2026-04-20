@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Mon profil — ACADEMIQ{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:760px">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="fw-bold mb-0">Mon profil</h4>
+    </div>
+
+    {% include 'partials/messages.html' %}
+
+    <div class="row g-4">
+        <!-- Photo de profil -->
+        <div class="col-md-4">
+            <div class="card border-0 text-center">
+                <div class="card-body py-4">
+                    {% if request.user.photo_profil %}
+                        <img src="{{ request.user.photo_profil.url }}"
+                             class="rounded-circle mb-3 border"
+                             width="110" height="110"
+                             style="object-fit:cover" alt="Photo">
+                    {% else %}
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3 border"
+                             style="width:110px;height:110px">
+                            <i class="bi bi-person-circle" style="font-size:3rem;color:#6b7280"></i>
+                        </div>
+                    {% endif %}
+                    <h5 class="fw-bold mb-0">{{ request.user.get_full_name }}</h5>
+                    <p class="text-muted small mb-2">{{ request.user.email }}</p>
+                    {% for g in groupes %}
+                    <span class="badge bg-primary me-1">{{ g }}</span>
+                    {% endfor %}
+
+                    <form method="post" enctype="multipart/form-data" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="photo">
+                        <div class="mb-2">
+                            <input type="file" name="photo_profil" accept="image/*"
+                                   class="form-control form-control-sm">
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-camera me-1"></i>Changer la photo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations + mot de passe -->
+        <div class="col-md-8">
+            <!-- Infos -->
+            <div class="card border-0 mb-3">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-person me-2 text-primary"></i>Informations personnelles</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted small">Nom</dt>
+                        <dd class="col-sm-8">{{ request.user.nom }}</dd>
+                        <dt class="col-sm-4 text-muted small">Prénom</dt>
+                        <dd class="col-sm-8">{{ request.user.prenom }}</dd>
+                        <dt class="col-sm-4 text-muted small">Email</dt>
+                        <dd class="col-sm-8">{{ request.user.email }}</dd>
+                        <dt class="col-sm-4 text-muted small">Rôle(s)</dt>
+                        <dd class="col-sm-8">{{ groupes|join:", " }}</dd>
+                        <dt class="col-sm-4 text-muted small">Compte actif</dt>
+                        <dd class="col-sm-8">
+                            {% if request.user.actif %}
+                            <span class="badge bg-success">Oui</span>
+                            {% else %}
+                            <span class="badge bg-danger">Non</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Changer mot de passe -->
+            <div class="card border-0">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-lock me-2 text-warning"></i>Changer le mot de passe</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="password">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Mot de passe actuel</label>
+                            <input type="password" name="ancien_mdp" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nouveau mot de passe</label>
+                            <input type="password" name="nouveau_mdp" class="form-control"
+                                   minlength="6" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Confirmer le nouveau mot de passe</label>
+                            <input type="password" name="confirm_mdp" class="form-control"
+                                   minlength="6" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm">
+                            <i class="bi bi-shield-check me-1"></i>Mettre à jour le mot de passe
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

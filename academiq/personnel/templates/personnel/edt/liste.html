@@ -1,0 +1,259 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Emploi du temps — ACADEMIQ{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">
+        <i class="bi bi-calendar-week me-2 text-primary"></i>Emploi du temps
+        {% if annee_active %}<small class="text-muted fs-6 ms-2">{{ annee_active.libelle }}</small>{% endif %}
+    </h4>
+</div>
+
+{% include 'partials/messages.html' %}
+
+{% if not annee_active %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Aucune année scolaire active. Activez une année avant de gérer l'emploi du temps.
+</div>
+{% else %}
+
+<!-- Filtres classe / période -->
+<div class="card mb-4 shadow-sm border-0">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Classe</label>
+                <select name="classe" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Choisir une classe --</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.pk }}" {% if classe_sel and classe_sel.pk == cls.pk %}selected{% endif %}>
+                        {{ cls.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Période</label>
+                <select name="periode" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Choisir une période --</option>
+                    {% for p in periodes %}
+                    <option value="{{ p.pk }}" {% if periode_sel and periode_sel.pk == p.pk %}selected{% endif %}>
+                        {{ p.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search me-1"></i>Afficher
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if not classe_sel or not periode_sel %}
+<div class="alert alert-info border-0">
+    <i class="bi bi-info-circle me-2"></i>
+    Sélectionnez une <strong>classe</strong> et une <strong>période</strong> pour afficher ou créer des créneaux.
+</div>
+{% else %}
+
+<!-- En-tête classe / période sélectionnées -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">
+        <i class="bi bi-people me-2 text-primary"></i>{{ classe_sel.nom }}
+        <span class="text-muted mx-2">·</span>
+        <span class="text-muted fs-6">{{ periode_sel.nom }}</span>
+        {% if periode_sel.cloturee %}
+        <span class="badge bg-warning text-dark ms-2">Clôturée</span>
+        {% endif %}
+    </h5>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAjout">
+        <i class="bi bi-plus-circle me-1"></i>Ajouter un créneau
+    </button>
+</div>
+
+<!-- Liste des créneaux par jour -->
+{% regroup creneaux by jour as creneaux_par_jour %}
+
+{% if creneaux_par_jour %}
+{% for groupe in creneaux_par_jour %}
+<div class="card shadow-sm mb-3 border-0">
+    <div class="card-header fw-semibold bg-primary text-white py-2">
+        <i class="bi bi-clock me-2"></i><span class="text-capitalize">{{ groupe.grouper }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Horaire</th>
+                        <th>Matière</th>
+                        <th>Enseignant</th>
+                        <th>Salle</th>
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in groupe.list %}
+                    <tr>
+                        <td class="fw-semibold text-nowrap">
+                            {{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}
+                        </td>
+                        <td>{{ c.cours.matiere.nom_matiere }}</td>
+                        <td>{{ c.cours.enseignant.get_full_name }}</td>
+                        <td><span class="badge bg-secondary">{{ c.salle.numero }}</span></td>
+                        <td>
+                            <form method="post" action="{% url 'personnel:supprimer_creneau' c.pk %}"
+                                  onsubmit="return confirm('Supprimer ce créneau ?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="?classe={{ classe_id }}&periode={{ periode_id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-calendar-x fs-2 d-block mb-3"></i>
+        Aucun créneau pour cette classe et cette période.<br>
+        <small>Cliquez sur <strong>Ajouter un créneau</strong> pour commencer.</small>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}{# fin classe_sel et periode_sel #}
+{% endif %}{# fin annee_active #}
+
+
+<!-- Modal ajout créneau -->
+{% if classe_sel and periode_sel %}
+<div class="modal fade" id="modalAjout" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Ajouter un créneau — {{ classe_sel.nom }}
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="?classe={{ classe_id }}&periode={{ periode_id }}" novalidate>
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-light border small mb-3">
+                        <i class="bi bi-info-circle me-1 text-primary"></i>
+                        Choisissez la matière, le jour, les heures et la salle pour ce créneau hebdomadaire.
+                    </div>
+
+                    <!-- Matière (cours) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-book me-1 text-primary"></i>Matière / Cours *
+                        </label>
+                        {{ form.cours }}
+                        {% if form.cours.errors %}
+                        <div class="text-danger small mt-1">{{ form.cours.errors|join:", " }}</div>
+                        {% endif %}
+                        <div class="form-text">Sélectionnez la matière enseignée dans cette classe.</div>
+                    </div>
+
+                    <!-- Période -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-range me-1 text-primary"></i>Période *
+                        </label>
+                        {{ form.periode }}
+                        {% if form.periode.errors %}
+                        <div class="text-danger small mt-1">{{ form.periode.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Jour + Salle sur la même ligne -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-calendar-day me-1 text-primary"></i>Jour de la semaine *
+                            </label>
+                            {{ form.jour }}
+                            {% if form.jour.errors %}
+                            <div class="text-danger small mt-1">{{ form.jour.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-building me-1 text-primary"></i>Salle *
+                            </label>
+                            {{ form.salle }}
+                            {% if form.salle.errors %}
+                            <div class="text-danger small mt-1">{{ form.salle.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Heures sur la même ligne -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-clock me-1 text-primary"></i>Heure de début *
+                            </label>
+                            {{ form.heure_debut }}
+                            {% if form.heure_debut.errors %}
+                            <div class="text-danger small mt-1">{{ form.heure_debut.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-clock-fill me-1 text-primary"></i>Heure de fin *
+                            </label>
+                            {{ form.heure_fin }}
+                            {% if form.heure_fin.errors %}
+                            <div class="text-danger small mt-1">{{ form.heure_fin.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger mt-3">
+                        {% for err in form.non_field_errors %}
+                        <div><i class="bi bi-exclamation-triangle me-1"></i>{{ err }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle me-1"></i>Enregistrer le créneau
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if form.errors %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = new bootstrap.Modal(document.getElementById('modalAjout'));
+    modal.show();
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Tableau de bord — ACADEMIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Tableau de bord</h4>
+        {% if annee_active %}
+        <small class="text-muted">Année active : <strong>{{ annee_active.libelle }}</strong></small>
+        {% else %}
+        <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Aucune année scolaire active —
+            <a href="{% url 'personnel:gestion_annees' %}">configurer</a></small>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cartes statistiques -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8f4fd">
+                    <i class="bi bi-person-video2 fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold">{{ nb_eleves }}</div>
+                    <div class="text-muted small">Élèves actifs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#fef3e2">
+                    <i class="bi bi-person-workspace fs-4 text-warning"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold">{{ nb_enseignants }}</div>
+                    <div class="text-muted small">Enseignants</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8fdf0">
+                    <i class="bi bi-people fs-4 text-success"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold">{{ nb_classes }}</div>
+                    <div class="text-muted small">Classes (année active)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 {% if absences_attente %}bg-danger bg-opacity-10{% else %}bg-light{% endif %}">
+                    <i class="bi bi-person-x fs-4 {% if absences_attente %}text-danger{% else %}text-secondary{% endif %}"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold {% if absences_attente %}text-danger{% endif %}">{{ absences_attente }}</div>
+                    <div class="text-muted small">Absences en attente</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Graphiques -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart me-2 text-primary"></i>Élèves par classe</h6>
+            </div>
+            <div class="card-body"><canvas id="chartClasses" height="220"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2 text-warning"></i>Absences</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="chartAbsences" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-graph-up me-2 text-success"></i>Moyennes / matière</h6>
+            </div>
+            <div class="card-body"><canvas id="chartMoyennes" height="200"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Accès rapide -->
+<h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em">Accès rapide</h6>
+<div class="row g-3">
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_annees' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-calendar3 fs-2 text-primary mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Années scolaires</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_classes' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-2 text-success mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Classes</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_inscriptions' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-plus fs-2 text-warning mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Inscriptions</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:validation_absences' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-x fs-2 text-danger mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Valider absences</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_bulletins' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-file-earmark-text fs-2 text-info mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Bulletins</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_comptes' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-gear fs-2 text-secondary mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Comptes</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const NAVY='#0B1D3A', GOLD='#D97706', GREEN='#16a34a', RED='#dc2626';
+
+// Élèves par classe
+const labelsClasses = {{ chart_classes_labels|safe }};
+const dataClasses   = {{ chart_classes_data|safe }};
+if (labelsClasses.length) {
+    new Chart(document.getElementById('chartClasses'), {
+        type: 'bar',
+        data: { labels: labelsClasses, datasets: [{ label: 'Élèves', data: dataClasses, backgroundColor: NAVY, borderRadius: 6 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+} else {
+    document.getElementById('chartClasses').outerHTML = '<p class="text-muted text-center small mt-4">Aucune classe enregistrée</p>';
+}
+
+// Absences
+new Chart(document.getElementById('chartAbsences'), {
+    type: 'doughnut',
+    data: {
+        labels: ['En attente', 'Justifiées', 'Non justifiées'],
+        datasets: [{ data: {{ chart_absences_data|safe }}, backgroundColor: [GOLD, GREEN, RED], borderWidth: 2 }]
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+});
+
+// Moyennes par matière
+const labelsMoy = {{ chart_moy_labels|safe }};
+const dataMoy   = {{ chart_moy_data|safe }};
+if (labelsMoy.length) {
+    new Chart(document.getElementById('chartMoyennes'), {
+        type: 'bar',
+        data: { labels: labelsMoy, datasets: [{ label: 'Moy /20', data: dataMoy, backgroundColor: dataMoy.map(v => v >= 10 ? GREEN : RED), borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 20 } } }
+    });
+} else {
+    document.getElementById('chartMoyennes').outerHTML = '<p class="text-muted text-center small mt-4">Aucune note enregistrée</p>';
+}
+</script>
+{% endblock %}

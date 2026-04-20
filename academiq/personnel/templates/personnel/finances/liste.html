@@ -1,0 +1,189 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Finances — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-cash-coin me-2 text-success"></i>Frais de scolarité</h4>
+    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalFrais">
+        <i class="bi bi-plus-circle me-1"></i>Créer des frais
+    </button>
+</div>
+{% include 'partials/messages.html' %}
+
+<!-- Résumé -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card border-0">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8fdf0">
+                    <i class="bi bi-cash-stack fs-4 text-success"></i>
+                </div>
+                <div>
+                    <div class="fs-5 fw-bold">{{ total_du|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Total dû</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-0">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8f4fd">
+                    <i class="bi bi-check-circle fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <div class="fs-5 fw-bold">{{ total_paye|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Total payé</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-0">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 bg-danger bg-opacity-10">
+                    <i class="bi bi-exclamation-circle fs-4 text-danger"></i>
+                </div>
+                <div>
+                    <div class="fs-5 fw-bold text-danger">{{ reste|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Reste à percevoir</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres -->
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="statut" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Tous les statuts</option>
+            <option value="en_attente" {% if statut_filtre == 'en_attente' %}selected{% endif %}>En attente</option>
+            <option value="partiel" {% if statut_filtre == 'partiel' %}selected{% endif %}>Partiellement payé</option>
+            <option value="paye" {% if statut_filtre == 'paye' %}selected{% endif %}>Payé</option>
+        </select>
+    </div>
+</form>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Élève</th><th>Montant dû</th><th>Payé</th><th>Reste</th><th>Statut</th><th>Échéance</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                {% for f in page_obj %}
+                <tr>
+                    <td class="fw-semibold">{{ f.eleve.get_full_name }}</td>
+                    <td>{{ f.montant_du|floatformat:0 }} FCFA</td>
+                    <td class="text-success">{{ f.montant_paye|floatformat:0 }} FCFA</td>
+                    <td class="{% if f.reste_a_payer > 0 %}text-danger fw-bold{% endif %}">{{ f.reste_a_payer|floatformat:0 }} FCFA</td>
+                    <td>
+                        {% if f.statut == 'paye' %}<span class="badge bg-success">Payé</span>
+                        {% elif f.statut == 'partiel' %}<span class="badge bg-warning text-dark">Partiel</span>
+                        {% else %}<span class="badge bg-danger">En attente</span>{% endif %}
+                    </td>
+                    <td class="small text-muted">{{ f.date_echeance|date:"d/m/Y"|default:"—" }}</td>
+                    <td>
+                        {% if f.statut != 'paye' %}
+                        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal"
+                                data-bs-target="#modalPay{{ f.pk }}">
+                            <i class="bi bi-cash"></i>
+                        </button>
+                        {% endif %}
+                        {% for p in f.paiements.all %}
+                        <a href="{% url 'personnel:recu_paiement_pdf' p.pk %}" target="_blank"
+                           class="btn btn-sm btn-outline-danger" title="Reçu {{ p.recu_numero }}">
+                            <i class="bi bi-file-pdf"></i>
+                        </a>
+                        {% endfor %}
+                    </td>
+                </tr>
+                <!-- Modal paiement -->
+                <div class="modal fade" id="modalPay{{ f.pk }}" tabindex="-1">
+                    <div class="modal-dialog modal-sm">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h6 class="modal-title">Enregistrer un paiement</h6>
+                                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form method="post" action="{% url 'personnel:enregistrer_paiement' f.pk %}">
+                                {% csrf_token %}
+                                <div class="modal-body">
+                                    <p class="small text-muted">{{ f.eleve.get_full_name }} — Reste : <strong>{{ f.reste_a_payer|floatformat:0 }} FCFA</strong></p>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Montant (FCFA)</label>
+                                        <input type="number" name="montant" class="form-control form-control-sm"
+                                               value="{{ f.reste_a_payer }}" required min="1">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Date</label>
+                                        <input type="date" name="date_paiement" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Mode</label>
+                                        <select name="mode" class="form-select form-select-sm">
+                                            <option value="especes">Espèces</option>
+                                            <option value="virement">Virement</option>
+                                            <option value="mobile_money">Mobile Money</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                                    <button type="submit" class="btn btn-success btn-sm">Valider</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-5">
+                    <i class="bi bi-cash-coin fs-2 d-block mb-2 opacity-25"></i>Aucun frais enregistré.
+                </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="mt-3">{% include 'partials/pagination.html' %}</div>
+
+<!-- Modal créer frais -->
+<div class="modal fade" id="modalFrais" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h6 class="modal-title">Créer des frais de scolarité</h6>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'personnel:creer_frais' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Élève</label>
+                        <select name="eleve" class="form-select" required>
+                            <option value="">— Choisir un élève —</option>
+                            {% for e in eleves_actifs %}
+                            <option value="{{ e.pk }}">{{ e.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Montant dû (FCFA)</label>
+                        <input type="number" name="montant_du" class="form-control" required min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Date d'échéance</label>
+                        <input type="date" name="date_echeance" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success btn-sm">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

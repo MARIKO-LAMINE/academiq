@@ -1,0 +1,126 @@
+{% extends 'base_parent.html' %}
+{% block title %}Emploi du temps — {{ enfant.get_full_name }} — ACADEMIQ{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'parent:suivi_enfant' enfant.pk %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">
+            <i class="bi bi-calendar-week me-2 text-primary"></i>Emploi du temps
+        </h4>
+        <small class="text-muted">
+            {{ enfant.get_full_name }}
+            {% if inscription %} — {{ inscription.classe.nom }}{% endif %}
+            {% if annee_active %} — {{ annee_active.libelle }}{% endif %}
+        </small>
+    </div>
+</div>
+
+{% if not annee_active or not inscription %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    {% if not annee_active %}Aucune année scolaire active.{% else %}{{ enfant.get_full_name }} n'est pas inscrit(e) cette année.{% endif %}
+</div>
+{% else %}
+
+<!-- Sélecteur de période -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body py-3">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <label class="fw-semibold small text-nowrap mb-0">Période :</label>
+            <select name="periode" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                {% for p in periodes %}
+                <option value="{{ p.pk }}" {% if periode_sel and periode_sel.pk == p.pk %}selected{% endif %}>
+                    {{ p.nom }} ({{ p.date_debut|date:"d/m" }} – {{ p.date_fin|date:"d/m/Y" }})
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+{% if not periode_sel %}
+<div class="alert alert-info border-0">
+    <i class="bi bi-info-circle me-2"></i>Aucune période disponible pour cette année.
+</div>
+{% elif not creneaux_par_jour %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-calendar-x fs-2 d-block mb-3"></i>
+        Aucun emploi du temps enregistré pour {{ inscription.classe.nom }} — {{ periode_sel.nom }}.
+    </div>
+</div>
+{% else %}
+
+<!-- Grille par jour -->
+{% for jour, creneaux in creneaux_par_jour.items %}
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header fw-semibold py-2" style="background:var(--bs-primary);color:#fff">
+        <i class="bi bi-calendar-day me-2"></i>
+        {{ jours_labels|default_if_none:""|stringformat:"s" }}
+        {% if jour == 'lundi' %}Lundi
+        {% elif jour == 'mardi' %}Mardi
+        {% elif jour == 'mercredi' %}Mercredi
+        {% elif jour == 'jeudi' %}Jeudi
+        {% elif jour == 'vendredi' %}Vendredi
+        {% elif jour == 'samedi' %}Samedi
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:130px">Horaire</th>
+                        <th>Matière</th>
+                        <th>Enseignant</th>
+                        <th>Salle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in creneaux %}
+                    <tr>
+                        <td class="fw-bold text-nowrap">
+                            <i class="bi bi-clock me-1 text-muted"></i>
+                            {{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}
+                        </td>
+                        <td>
+                            <span class="fw-semibold">{{ c.cours.matiere.nom_matiere }}</span>
+                            <small class="text-muted d-block">coeff. {{ c.cours.matiere.coefficient }}</small>
+                        </td>
+                        <td>
+                            <i class="bi bi-person me-1 text-muted"></i>
+                            {{ c.cours.enseignant.get_full_name }}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-building me-1"></i>{{ c.salle.numero }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Résumé -->
+<div class="card border-0 bg-light mt-4">
+    <div class="card-body py-2 px-3">
+        <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Emploi du temps de <strong>{{ inscription.classe.nom }}</strong>
+            pour la période <strong>{{ periode_sel.nom }}</strong>
+            ({{ periode_sel.date_debut|date:"d/m/Y" }} au {{ periode_sel.date_fin|date:"d/m/Y" }})
+        </small>
+    </div>
+</div>
+
+{% endif %}
+{% endif %}
+
+{% endblock %}

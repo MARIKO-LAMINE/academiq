@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block sidebar %}
+<nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-3" id="sidebarMenu">
+    <div class="px-3 mb-3 border-bottom border-secondary pb-3">
+        <div class="text-white-50 small">Connecté en tant que</div>
+        <div class="text-white fw-semibold">{{ request.user.get_full_name }}</div>
+        <span class="badge badge-role mt-1">
+            {% for g in request.user.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </span>
+    </div>
+    <ul class="nav flex-column px-2">
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'personnel:dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Tableau de bord
+            </a>
+        </li>
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'FINANCES' in groupes_user %}
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Administration</div></li>
+
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'annees' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_annees' %}">
+                <i class="bi bi-calendar3"></i> Années scolaires
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'periodes' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_periodes' %}">
+                <i class="bi bi-calendar-range"></i> Périodes
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'matieres' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_matieres' %}">
+                <i class="bi bi-journals"></i> Matières
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'salles' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_salles' %}">
+                <i class="bi bi-building"></i> Salles
+            </a>
+        </li>
+
+        {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'classes' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_classes' %}">
+                <i class="bi bi-people"></i> Classes
+            </a>
+        </li>
+        {% endif %}
+
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'cours' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_cours' %}">
+                <i class="bi bi-book"></i> Cours
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'edt' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_edt' %}">
+                <i class="bi bi-calendar-week"></i> Emploi du temps
+            </a>
+        </li>
+        {% endif %}
+
+        {% endif %}
+
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Scolarité</div></li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'inscriptions' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_inscriptions' %}">
+                <i class="bi bi-person-plus"></i> Inscriptions
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'absences' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:validation_absences' %}">
+                <i class="bi bi-person-x"></i> Absences
+                {% with nb=absences_attente %}{% if nb %}<span class="badge bg-danger ms-1">{{ nb }}</span>{% endif %}{% endwith %}
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'bulletin' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_bulletins' %}">
+                <i class="bi bi-file-earmark-text"></i> Bulletins
+            </a>
+        </li>
+
+        <!-- Messagerie & Annonces -->
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Communication</div></li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'messagerie' in request.resolver_match.url_name or 'message' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:messagerie' %}">
+                <i class="bi bi-envelope"></i> Messagerie
+                {% if nb_messages_non_lus %}<span class="badge bg-danger ms-1">{{ nb_messages_non_lus }}</span>{% endif %}
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'annonces' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_annonces' %}">
+                <i class="bi bi-megaphone"></i> Annonces
+            </a>
+        </li>
+
+        <!-- Finances -->
+        {% if 'DIRECTION' in groupes_user or 'FINANCES' in groupes_user or 'SCOLARITE' in groupes_user %}
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Finances</div></li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'finances' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_finances' %}">
+                <i class="bi bi-cash-coin"></i> Frais de scolarité
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Calendrier -->
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Calendrier</div></li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'calendrier' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:calendrier_scolaire' %}">
+                <i class="bi bi-calendar3"></i> Calendrier scolaire
+            </a>
+        </li>
+
+        {% if 'DIRECTION' in groupes_user %}
+        <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Direction</div></li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'gestion_comptes' or request.resolver_match.url_name == 'creer_compte' or request.resolver_match.url_name == 'modifier_compte' %}active{% endif %}"
+               href="{% url 'personnel:gestion_comptes' %}">
+                <i class="bi bi-person-gear"></i> Comptes utilisateurs
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'historique' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:historique_actions' %}">
+                <i class="bi bi-clock-history"></i> Historique
+            </a>
+        </li>
+        {% endif %}
+
+        {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'demandes' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:demandes_inscription' %}">
+                <i class="bi bi-person-badge"></i> Demandes d'inscription
+                {% if inscrits_en_attente %}<span class="badge bg-danger ms-1">{{ inscrits_en_attente }}</span>{% endif %}
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+    <hr class="border-secondary mx-3">
+    <ul class="nav flex-column px-2">
+        <li class="nav-item">
+            <a class="nav-link text-danger" href="{% url 'accounts:logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endblock %}

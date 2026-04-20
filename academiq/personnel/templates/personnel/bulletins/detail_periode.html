@@ -1,0 +1,62 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Bulletins {{ periode }} — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">
+        <i class="bi bi-file-earmark-text me-2"></i>Bulletins — {{ periode }}
+    </h2>
+    <div class="d-flex gap-2 flex-wrap">
+        {% for cls in classes %}
+        <a href="{% url 'personnel:export_notes_excel' cls.pk periode.pk %}" class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Notes {{ cls.nom }}
+        </a>
+        {% endfor %}
+        <a href="{% url 'personnel:gestion_bulletins' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+    </div>
+</div>
+{% include 'partials/messages.html' %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Rang</th><th>Élève</th><th>Moyenne</th><th>Effectif</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for b in bulletins %}
+                <tr>
+                    <td><strong>{{ b.rang }}</strong></td>
+                    <td>{{ b.eleve.get_full_name }}</td>
+                    <td>
+                        {% if b.moyenne_generale %}
+                        <span class="badge fs-6 {% if b.moyenne_generale >= 10 %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ b.moyenne_generale }}/20
+                        </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ b.effectif_classe }}</td>
+                    <td>
+                        <a href="{% url 'personnel:export_bulletin_pdf' b.pk %}" target="_blank"
+                           class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-file-pdf me-1"></i>PDF
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                        Aucun bulletin généré pour cette période.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

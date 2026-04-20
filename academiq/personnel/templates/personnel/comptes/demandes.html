@@ -1,0 +1,53 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Demandes d'inscription — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0"><i class="bi bi-person-plus me-2"></i>Demandes d'inscription en attente</h2>
+</div>
+{% include 'partials/messages.html' %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nom complet</th>
+                        <th>Email</th>
+                        <th>Date demande</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in en_attente %}
+                <tr>
+                    <td class="fw-semibold">{{ p.get_full_name }}</td>
+                    <td class="text-muted">{{ p.email }}</td>
+                    <td class="text-muted small">{{ p.date_creation|date:"d/m/Y H:i" }}</td>
+                    <td class="text-center">
+                        <a href="{% url 'personnel:attribuer_role' p.pk %}"
+                           class="btn btn-sm btn-primary me-1">
+                            <i class="bi bi-person-check me-1"></i>Attribuer un role
+                        </a>
+                        <form method="post" action="{% url 'personnel:rejeter_inscription' p.pk %}" class="d-inline"
+                              onsubmit="return confirm('Rejeter et supprimer cette demande ?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x-circle me-1"></i>Rejeter
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-5">
+                        <i class="bi bi-check-circle fs-3 d-block mb-2 text-success"></i>
+                        Aucune demande en attente.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

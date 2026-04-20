@@ -1,0 +1,85 @@
+{% extends 'base_enseignant.html' %}
+{% block title %}{{ cours.matiere.nom_matiere }} ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'enseignant:mes_cours' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0">{{ cours.matiere.nom_matiere }}</h4>
+        <small class="text-muted">{{ cours.classe.nom }} &mdash; coeff. {{ cours.matiere.coefficient }}</small>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+        <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-success">
+            <i class="bi bi-pencil-square me-1"></i>Saisir note
+        </a>
+        <a href="{% url 'enseignant:saisir_absence' cours.pk %}" class="btn btn-sm btn-warning">
+            <i class="bi bi-person-x me-1"></i>Absence
+        </a>
+        <a href="{% url 'enseignant:absences_cours' cours.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-list me-1"></i>Absences
+        </a>
+    </div>
+</div>
+<div class="row g-3">
+    <!-- Eleves inscrits -->
+    <div class="col-lg-5">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold">
+                <i class="bi bi-people me-2"></i>Eleves inscrits ({{ inscriptions|length }})
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for i in inscriptions %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ i.eleve.get_full_name }}</span>
+                        <a href="{% url 'enseignant:notes_eleve' cours.pk i.eleve.pk %}" class="btn btn-xs btn-outline-primary btn-sm py-0">
+                            <i class="bi bi-bar-chart"></i>
+                        </a>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted text-center py-3">Aucun eleve inscrit.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- Dernieres notes -->
+    <div class="col-lg-7">
+        <div class="card border-0">
+            <div class="card-header bg-light fw-semibold d-flex justify-content-between">
+                <span><i class="bi bi-pencil-square me-2"></i>Dernieres notes</span>
+                <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-success py-0">
+                    <i class="bi bi-plus"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Eleve</th><th>Note</th><th>Type</th><th>Periode</th><th></th></tr></thead>
+                    <tbody>
+                        {% for note in notes %}
+                        <tr>
+                            <td>{{ note.eleve.get_full_name }}</td>
+                            <td>
+                                <span class="badge fs-6 {% if note.valeur >= 10 %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ note.valeur }}/20
+                                </span>
+                            </td>
+                            <td class="small text-muted">{{ note.get_type_eval_display }}</td>
+                            <td class="small text-muted">{{ note.periode.nom }}</td>
+                            <td>
+                                <a href="{% url 'enseignant:modifier_note' note.pk %}" class="btn btn-sm btn-outline-primary py-0">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-4 d-block mb-2"></i>Aucune note enregistree.
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

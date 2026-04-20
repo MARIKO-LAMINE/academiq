@@ -1,0 +1,44 @@
+{% extends 'base_enseignant.html' %}
+{% block title %}Mes cours ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-book me-2 text-primary"></i>Mes cours{% if annee_active %} <small class="text-muted fs-6">{{ annee_active.libelle }}</small>{% endif %}</h4>
+</div>
+{% if cours_list %}
+<div class="row g-3">
+    {% for cours in cours_list %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="fw-bold mb-0">{{ cours.matiere.nom_matiere }}</h6>
+                        <small class="text-muted"><i class="bi bi-people me-1"></i>{{ cours.classe.nom }}</small>
+                    </div>
+                    <span class="badge bg-primary">coeff. {{ cours.matiere.coefficient }}</span>
+                </div>
+                <p class="text-muted small mb-3"><i class="bi bi-clock me-1"></i>{{ cours.nb_heures_hebdo }}h / semaine</p>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'enseignant:detail_cours' cours.pk %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-eye me-1"></i>Liste des eleves et notes
+                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-outline-success flex-fill">
+                            <i class="bi bi-pencil-square me-1"></i>Saisir note
+                        </a>
+                        <a href="{% url 'enseignant:saisir_absence' cours.pk %}" class="btn btn-sm btn-outline-warning flex-fill">
+                            <i class="bi bi-person-x me-1"></i>Absence
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card border-0"><div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-book fs-1 d-block mb-3 opacity-25"></i>Aucun cours pour cette annee.
+</div></div>
+{% endif %}
+{% endblock %}

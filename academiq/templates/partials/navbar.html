@@ -1,0 +1,41 @@
+{% load static %}
+<nav class="navbar navbar-dark navbar-academiq sticky-top px-3 py-2">
+    <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'accounts:dashboard' %}">
+        <i class="bi bi-mortarboard-fill fs-5" style="color:#f0a500"></i>
+        ACADEMIQ
+    </a>
+
+    {% if user.is_authenticated %}
+    <div class="d-flex align-items-center gap-3 ms-auto">
+        <!-- Notifications -->
+        <a href="#" class="text-white position-relative text-decoration-none">
+            <i class="bi bi-bell fs-5"></i>
+            {% with nb=user.notifications.filter.count %}
+            {% endwith %}
+        </a>
+        <!-- Profil -->
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2"
+                    type="button" data-bs-toggle="dropdown">
+                {% if user.photo_profil %}
+                    <img src="{{ user.photo_profil.url }}" class="rounded-circle" width="28" height="28" alt="">
+                {% else %}
+                    <i class="bi bi-person-circle fs-5"></i>
+                {% endif %}
+                <span class="d-none d-md-inline">{{ user.get_full_name }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><span class="dropdown-item-text text-muted small">{{ user.email }}</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'accounts:mon_profil' %}"><i class="bi bi-person me-2"></i>Mon profil</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">
+                        <i class="bi bi-box-arrow-right me-2"></i>Déconnexion
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</nav>

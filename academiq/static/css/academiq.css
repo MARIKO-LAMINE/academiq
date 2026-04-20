@@ -1,0 +1,94 @@
+:root {
+    --aq-primary: #1a3a5c;
+    --aq-accent: #f0a500;
+    --aq-sidebar-width: 240px;
+}
+
+/* Sidebar */
+.sidebar {
+    background-color: var(--aq-primary);
+    min-height: calc(100vh - 56px);
+    position: sticky;
+    top: 56px;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+    border-radius: 6px;
+    padding: .4rem .75rem;
+    font-size: .9rem;
+    transition: background .15s ease, color .15s ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.sidebar .nav-link.active {
+    background-color: var(--aq-accent);
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+/* Badge role */
+.badge-role {
+    background-color: var(--aq-accent);
+    color: #1a1a1a;
+    font-size: .7rem;
+    font-weight: 600;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: var(--aq-accent) !important;
+}
+
+/* Cards dashboard */
+.stat-card {
+    border-left: 4px solid var(--aq-accent);
+    transition: transform .15s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Tables */
+.table-dark th {
+    background-color: var(--aq-primary) !important;
+}
+
+/* Forms */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--aq-accent);
+    box-shadow: 0 0 0 .2rem rgba(240, 165, 0, .25);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--aq-primary);
+    border-color: var(--aq-primary);
+}
+
+.btn-primary:hover {
+    background-color: #122847;
+    border-color: #122847;
+}
+
+/* Responsive sidebar collapse */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        z-index: 100;
+        width: var(--aq-sidebar-width);
+        left: -var(--aq-sidebar-width);
+    }
+    .sidebar.show {
+        left: 0;
+    }
+}

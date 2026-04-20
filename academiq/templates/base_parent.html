@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block sidebar %}
+<nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-3" id="sidebarMenu">
+    <div class="px-3 mb-3 border-bottom border-secondary pb-3">
+        <div class="text-white-50 small">Connecté en tant que</div>
+        <div class="text-white fw-semibold">{{ request.user.get_full_name }}</div>
+        <span class="badge badge-role mt-1">Parent</span>
+    </div>
+    <ul class="nav flex-column px-2">
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'parent:dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Tableau de bord
+            </a>
+        </li>
+        {% for lien in enfants_liens %}
+        <li class="nav-item mt-2 mb-1">
+            <div class="text-white-50 small px-2 text-uppercase" style="font-size:.7rem">
+                <i class="bi bi-person-fill me-1"></i>{{ lien.eleve.get_full_name }}
+                <span class="text-white-50">({{ lien.get_lien_display }})</span>
+            </div>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'suivi_enfant' and request.resolver_match.kwargs.eleve_id == lien.eleve.pk %}active{% endif %}"
+               href="{% url 'parent:suivi_enfant' lien.eleve.pk %}">
+                <i class="bi bi-clipboard-data"></i> Suivi scolaire
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'edt_enfant' and request.resolver_match.kwargs.eleve_id == lien.eleve.pk %}active{% endif %}"
+               href="{% url 'parent:edt_enfant' lien.eleve.pk %}">
+                <i class="bi bi-calendar-week"></i> Emploi du temps
+            </a>
+        </li>
+        {% endfor %}
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}"
+               href="{% url 'parent:notifications' %}">
+                <i class="bi bi-bell"></i> Notifications
+                {% if nb_notifs %}<span class="badge bg-warning text-dark ms-1">{{ nb_notifs }}</span>{% endif %}
+            </a>
+        </li>
+    </ul>
+    <hr class="border-secondary mx-3">
+    <ul class="nav flex-column px-2">
+        <li class="nav-item">
+            <a class="nav-link text-danger" href="{% url 'accounts:logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endblock %}

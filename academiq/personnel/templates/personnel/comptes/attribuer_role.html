@@ -1,0 +1,147 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Attribuer un role — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'personnel:demandes_inscription' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2 class="h4 mb-0">Attribuer un role a {{ personne.get_full_name }}</h2>
+</div>
+
+{% include 'partials/messages.html' %}
+
+{% if erreurs %}
+<div class="alert alert-danger">
+    {% for e in erreurs %}<div>{{ e }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body text-center py-4">
+                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center mb-3"
+                     style="width:72px;height:72px">
+                    <i class="bi bi-person-fill text-white fs-2"></i>
+                </div>
+                <h5 class="fw-bold mb-1">{{ personne.get_full_name }}</h5>
+                <p class="text-muted small mb-0">{{ personne.email }}</p>
+                <p class="text-muted small">Demande le {{ personne.date_creation|date:"d/m/Y" }}</p>
+                <span class="badge bg-warning text-dark">En attente de validation</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-shield-check me-2"></i>Choisir un role
+            </div>
+            <div class="card-body">
+                <form method="post" id="roleForm" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Role *</label>
+                        <select name="role" class="form-select" id="roleSelect" required>
+                            <option value="">-- Selectionner un role --</option>
+                            <option value="personnel" {% if role_selectionne == 'personnel' %}selected{% endif %}>Personnel administratif</option>
+                            <option value="enseignant" {% if role_selectionne == 'enseignant' %}selected{% endif %}>Enseignant</option>
+                            <option value="eleve" {% if role_selectionne == 'eleve' %}selected{% endif %}>Eleve</option>
+                            <option value="parent" {% if role_selectionne == 'parent' %}selected{% endif %}>Parent</option>
+                        </select>
+                    </div>
+
+                    <!-- Personnel -->
+                    <div id="sub-personnel" class="sub-form d-none">
+                        <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2">Informations personnel</h6>
+                        {% for field in sub_forms.personnel %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Enseignant -->
+                    <div id="sub-enseignant" class="sub-form d-none">
+                        <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2">Informations enseignant</h6>
+                        {% for field in sub_forms.enseignant %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Eleve -->
+                    <div id="sub-eleve" class="sub-form d-none">
+                        <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2">Informations eleve</h6>
+                        {% for field in sub_forms.eleve %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Parent -->
+                    <div id="sub-parent" class="sub-form d-none">
+                        <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2">Informations parent</h6>
+                        {% for field in sub_forms.parent %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Valider et activer le compte
+                        </button>
+                        <a href="{% url 'personnel:demandes_inscription' %}" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const roleSelect = document.getElementById('roleSelect');
+const roleSelectionne = "{{ role_selectionne }}";
+
+function toggleSubForm() {
+    document.querySelectorAll('.sub-form').forEach(el => {
+        el.classList.add('d-none');
+        el.querySelectorAll('input, select, textarea').forEach(f => f.disabled = true);
+    });
+    const val = roleSelect.value;
+    if (val) {
+        const target = document.getElementById('sub-' + val);
+        if (target) {
+            target.classList.remove('d-none');
+            target.querySelectorAll('input, select, textarea').forEach(f => f.disabled = false);
+        }
+    }
+}
+
+// Initialisation au chargement
+toggleSubForm();
+if (roleSelectionne) {
+    roleSelect.value = roleSelectionne;
+    toggleSubForm();
+}
+
+roleSelect.addEventListener('change', toggleSubForm);
+</script>
+{% endblock %}

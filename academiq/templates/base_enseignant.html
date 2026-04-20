@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block sidebar %}
+<nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-3" id="sidebarMenu">
+    <div class="px-3 mb-3 border-bottom border-secondary pb-3">
+        <div class="text-white-50 small">Connecté en tant que</div>
+        <div class="text-white fw-semibold">{{ request.user.get_full_name }}</div>
+        <span class="badge badge-role mt-1">Enseignant</span>
+    </div>
+    <ul class="nav flex-column px-2">
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'enseignant:dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Tableau de bord
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'cours' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'enseignant:mes_cours' %}">
+                <i class="bi bi-book"></i> Mes cours
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'notification' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'enseignant:notifications' %}">
+                <i class="bi bi-bell"></i> Notifications
+                {% with nb=request.user.notifications.count %}
+                {% endwith %}
+            </a>
+        </li>
+    </ul>
+    <hr class="border-secondary mx-3">
+    <ul class="nav flex-column px-2">
+        <li class="nav-item">
+            <a class="nav-link text-danger" href="{% url 'accounts:logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endblock %}

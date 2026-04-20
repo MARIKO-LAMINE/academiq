@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block sidebar %}
+<nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-3" id="sidebarMenu">
+    <div class="px-3 mb-3 border-bottom border-secondary pb-3">
+        <div class="text-white-50 small">Connecté en tant que</div>
+        <div class="text-white fw-semibold">{{ request.user.get_full_name }}</div>
+        <span class="badge badge-role mt-1">Élève</span>
+        {% if inscription %}
+        <div class="text-white-50 small mt-1">{{ inscription.classe.nom }}</div>
+        {% endif %}
+    </div>
+    <ul class="nav flex-column px-2">
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'eleve:dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Tableau de bord
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'mes_notes' %}active{% endif %}"
+               href="{% url 'eleve:mes_notes' %}">
+                <i class="bi bi-pencil-square"></i> Mes notes
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'mes_absences' %}active{% endif %}"
+               href="{% url 'eleve:mes_absences' %}">
+                <i class="bi bi-person-x"></i> Mes absences
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'bulletin' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'eleve:mes_bulletins' %}">
+                <i class="bi bi-file-earmark-text"></i> Bulletins
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}"
+               href="{% url 'eleve:notifications' %}">
+                <i class="bi bi-bell"></i> Notifications
+                {% if nb_notifs %}<span class="badge bg-warning text-dark ms-1">{{ nb_notifs }}</span>{% endif %}
+            </a>
+        </li>
+    </ul>
+    <hr class="border-secondary mx-3">
+    <ul class="nav flex-column px-2">
+        <li class="nav-item">
+            <a class="nav-link text-danger" href="{% url 'accounts:logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endblock %}

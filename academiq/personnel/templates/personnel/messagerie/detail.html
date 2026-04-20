@@ -1,0 +1,30 @@
+{% extends 'base_personnel.html' %}
+{% block title %}{{ msg.sujet }} — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'personnel:messagerie' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <h4 class="fw-bold mb-0">{{ msg.sujet }}</h4>
+</div>
+<div class="card border-0" style="max-width:700px">
+    <div class="card-header bg-transparent border-bottom">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted small">De : </span>
+                <strong>{{ msg.expediteur.get_full_name }}</strong>
+                <span class="text-muted small ms-3">À : </span>
+                <strong>{{ msg.destinataire.get_full_name }}</strong>
+            </div>
+            <small class="text-muted">{{ msg.date_envoi|date:"d/m/Y H:i" }}</small>
+        </div>
+    </div>
+    <div class="card-body" style="white-space:pre-line">{{ msg.corps }}</div>
+    {% if msg.expediteur == request.user %}
+    <div class="card-footer bg-transparent">
+        <span class="small text-muted">
+            {% if msg.lu %}<i class="bi bi-check2-all text-primary me-1"></i>Lu
+            {% else %}<i class="bi bi-check2 me-1"></i>Non lu{% endif %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

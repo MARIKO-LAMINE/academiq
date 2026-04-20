@@ -1,0 +1,56 @@
+{% extends 'base_parent.html' %}
+{% block title %}Espace parent ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Bonjour, {{ request.user.prenom }} !</h4>
+        {% if annee_active %}<small class="text-muted">Annee : <strong>{{ annee_active.libelle }}</strong></small>{% endif %}
+    </div>
+    {% if nb_notifs %}<a href="{% url 'parent:notifications' %}" class="btn btn-sm btn-warning">
+        <i class="bi bi-bell me-1"></i>{{ nb_notifs }} notification{{ nb_notifs|pluralize }}</a>{% endif %}
+</div>
+{% if enfants_data %}
+<div class="row g-3">
+    {% for ed in enfants_data %}
+    <div class="col-md-6">
+        <div class="card border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-0">{{ ed.enfant.get_full_name }}</h5>
+                        <small class="text-muted">{{ ed.lien }}{% if ed.inscription %} &mdash; {{ ed.inscription.classe.nom }}{% endif %}</small>
+                    </div>
+                    <i class="bi bi-person-circle fs-3 text-secondary"></i>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="fw-bold">{{ ed.nb_notes }}</div>
+                            <div class="text-muted small">Notes</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="{% if ed.nb_absences %}bg-danger bg-opacity-10{% else %}bg-light{% endif %} rounded p-2 text-center">
+                            <div class="fw-bold {% if ed.nb_absences %}text-danger{% endif %}">{{ ed.nb_absences }}</div>
+                            <div class="text-muted small">Absences</div>
+                        </div>
+                    </div>
+                </div>
+                {% if ed.derniere_note %}
+                <p class="small text-muted mb-3">Derniere note : <strong>{{ ed.derniere_note.valeur }}/20</strong> en {{ ed.derniere_note.cours.matiere.nom_matiere }}</p>
+                {% endif %}
+                <a href="{% url 'parent:suivi_enfant' ed.enfant.pk %}" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-eye me-1"></i>Voir le suivi complet
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card border-0"><div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+    Aucun enfant lie a votre compte. Contactez l'administration.
+</div></div>
+{% endif %}
+{% endblock %}

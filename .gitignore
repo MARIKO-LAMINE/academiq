@@ -1,0 +1,40 @@
+# Environnement virtuel
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+media/
+
+# Variables d'environnement
+.env
+.env.*
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Claude (mémoire locale)
+.claude/
