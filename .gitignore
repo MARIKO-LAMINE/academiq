@@ -38,3 +38,6 @@ build/
 
 # Claude (mémoire locale)
 .claude/
+
+# PDF générés
+*.pdf
