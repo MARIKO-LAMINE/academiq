@@ -1,4 +1,4 @@
-# ACADEMIQ V3
+# ACADEMIQ 
 **Système Centralisé de Gestion des Activités Scolaires**
 
 Étudiant : MARIKO Lamine · N° CE : CI0223065023  
@@ -156,4 +156,4 @@ academiq/                  ← Répertoire racine
 
 ---
 
-*ACADEMIQ V3 — MARIKO Lamine · CI0223065023 · Master 1 Génie Informatique · Université Nangui Abrogoua · 2025–2026*
+*ACADEMIQ — MARIKO Lamine · CI0223065023 · Master 1 Génie Informatique · Université Nangui Abrogoua · 2025–2026*
