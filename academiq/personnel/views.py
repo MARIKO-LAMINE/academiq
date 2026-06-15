@@ -21,6 +21,7 @@ from core.models import (
     Personne, Personnel, Enseignant, Eleve, Parent, Inscription,
     Absence, Bulletin, ResultatMatiere, Notification, HistoriqueActions,
     EmploiDuTemps, Message, EvenementScolaire, FraisScolarite, Paiement,
+    TarifNiveau,
 )
 from .forms import (
     AnneeScolaireForm, PeriodeForm, SalleForm, MatiereForm, ClasseForm,
@@ -84,14 +85,18 @@ def dashboard(request):
 
 # ─── Années scolaires ─────────────────────────────────────────────────────────
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION', 'SCOLARITE')
 def gestion_annees(request):
     annees = AnneeScolaire.objects.all()
+    groupes = list(request.user.groups.values_list('name', flat=True))
     form = AnneeScolaireForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, "Année scolaire créée avec succès.")
-        return redirect('personnel:gestion_annees')
+    if request.method == 'POST':
+        if 'DIRECTION' not in groupes:
+            return redirect('accounts:acces_refuse')
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Année scolaire créée avec succès.")
+            return redirect('personnel:gestion_annees')
     return render(request, 'personnel/annees/liste.html', {'annees': annees, 'form': form})
 
 
@@ -117,15 +122,19 @@ def modifier_annee(request, pk):
 
 # ─── Périodes ─────────────────────────────────────────────────────────────────
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_periodes(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     periodes = Periode.objects.filter(annee=annee_active) if annee_active else Periode.objects.none()
+    groupes = list(request.user.groups.values_list('name', flat=True))
     form = PeriodeForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, "Période créée.")
-        return redirect('personnel:gestion_periodes')
+    if request.method == 'POST':
+        if 'ADMINISTRATION' in groupes and 'DIRECTION' not in groupes and 'SCOLARITE' not in groupes:
+            return redirect('accounts:acces_refuse')
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Période créée.")
+            return redirect('personnel:gestion_periodes')
     return render(request, 'personnel/periodes/liste.html', {
         'periodes': periodes, 'form': form, 'annee_active': annee_active
     })
@@ -140,20 +149,44 @@ def cloturer_periode(request, pk):
     return redirect('personnel:gestion_periodes')
 
 
+@role_required('DIRECTION', 'SCOLARITE')
+def modifier_periode(request, pk):
+    periode = get_object_or_404(Periode, pk=pk)
+    form = PeriodeForm(request.POST or None, instance=periode)
+    if request.method == 'POST':
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, f"Période «{periode.nom}» modifiée.")
+                return redirect('personnel:gestion_periodes')
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            for field, errs in form.errors.items():
+                for err in errs:
+                    messages.error(request, err)
+    return render(request, 'personnel/periodes/form.html', {
+        'form': form, 'objet': periode, 'titre': 'Modifier la période'
+    })
+
+
 # ─── Salles ───────────────────────────────────────────────────────────────────
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_salles(request):
     salles = Salle.objects.all()
     form = SalleForm(request.POST or None)
+    groupes = list(request.user.groups.values_list('name', flat=True))
     if request.method == 'POST' and form.is_valid():
+        if 'DIRECTION' not in groupes and 'ADMINISTRATION' not in groupes:
+            return redirect('accounts:acces_refuse')
         form.save()
         messages.success(request, "Salle créée.")
         return redirect('personnel:gestion_salles')
     return render(request, 'personnel/salles/liste.html', {'salles': salles, 'form': form})
 
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION', 'ADMINISTRATION')
 def modifier_salle(request, pk):
     salle = get_object_or_404(Salle, pk=pk)
     form = SalleForm(request.POST or None, instance=salle)
@@ -176,18 +209,21 @@ def supprimer_salle(request, pk):
 
 # ─── Matières ─────────────────────────────────────────────────────────────────
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_matieres(request):
     matieres = Matiere.objects.all()
     form = MatiereForm(request.POST or None)
+    groupes = list(request.user.groups.values_list('name', flat=True))
     if request.method == 'POST' and form.is_valid():
+        if 'DIRECTION' not in groupes:
+            return redirect('accounts:acces_refuse')
         form.save()
         messages.success(request, "Matière créée.")
         return redirect('personnel:gestion_matieres')
     return render(request, 'personnel/matieres/liste.html', {'matieres': matieres, 'form': form})
 
 
-@role_required(*ROLES_ADMIN)
+@role_required('DIRECTION')
 def modifier_matiere(request, pk):
     matiere = get_object_or_404(Matiere, pk=pk)
     form = MatiereForm(request.POST or None, instance=matiere)
@@ -204,17 +240,31 @@ def modifier_matiere(request, pk):
 def gestion_classes(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     classes = Classe.objects.filter(annee=annee_active).select_related('annee') if annee_active else Classe.objects.none()
+    groupes = list(request.user.groups.values_list('name', flat=True))
     form = ClasseForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        try:
-            form.save()
-            messages.success(request, "Classe créée.")
-            return redirect('personnel:gestion_classes')
-        except IntegrityError:
-            messages.error(request, "Cette classe existe déjà pour cette année.")
+    if request.method == 'POST':
+        if 'ADMINISTRATION' in groupes and 'DIRECTION' not in groupes and 'SCOLARITE' not in groupes:
+            return redirect('accounts:acces_refuse')
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, "Classe créée.")
+                return redirect('personnel:gestion_classes')
+            except IntegrityError:
+                messages.error(request, "Cette classe existe déjà pour cette année.")
     return render(request, 'personnel/classes/liste.html', {
         'classes': classes, 'form': form, 'annee_active': annee_active
     })
+
+
+@role_required('DIRECTION')
+def supprimer_classe(request, pk):
+    classe = get_object_or_404(Classe, pk=pk)
+    if request.method == 'POST':
+        nom = classe.nom
+        classe.delete()
+        messages.success(request, f"Classe « {nom} » supprimée.")
+    return redirect('personnel:gestion_classes')
 
 
 @role_required('DIRECTION', 'SCOLARITE', 'ADMINISTRATION')
@@ -230,20 +280,25 @@ def modifier_classe(request, pk):
 
 # ─── Cours ────────────────────────────────────────────────────────────────────
 
-@role_required('DIRECTION', 'ADMINISTRATION')
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_cours(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     cours_qs = Cours.objects.filter(annee=annee_active).select_related(
         'matiere', 'classe', 'enseignant', 'annee'
     ) if annee_active else Cours.objects.none()
-    form = CoursForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        try:
-            form.save()
-            messages.success(request, "Cours créé.")
-            return redirect('personnel:gestion_cours')
-        except IntegrityError:
-            messages.error(request, "Ce cours existe déjà pour cette matière, classe et année.")
+    groupes = list(request.user.groups.values_list('name', flat=True))
+    initial = {'annee': annee_active} if annee_active else {}
+    form = CoursForm(request.POST or None, initial=initial)
+    if request.method == 'POST':
+        if 'SCOLARITE' in groupes and 'DIRECTION' not in groupes and 'ADMINISTRATION' not in groupes:
+            return redirect('accounts:acces_refuse')
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, "Cours créé.")
+                return redirect('personnel:gestion_cours')
+            except IntegrityError:
+                messages.error(request, "Ce cours existe déjà pour cette matière, cette classe et cette année.")
     return render(request, 'personnel/cours/liste.html', {
         'cours_list': cours_qs, 'form': form, 'annee_active': annee_active
     })
@@ -364,8 +419,8 @@ def _assigner_role(personne, role, sub_form):
     import uuid
     sub = sub_form.save(commit=False)
     sub.personne = personne
-    if role == 'eleve' and not getattr(sub, 'matricule', None):
-        sub.matricule = f"ELV-{uuid.uuid4().hex[:8].upper()}"
+    if role == 'eleve':
+        sub.matricule = sub_form.cleaned_data.get('matricule', '').strip()
     sub.save()
     if role == 'personnel':
         fonction = sub_form.cleaned_data.get('fonction', '').upper()
@@ -388,11 +443,18 @@ def demandes_inscription(request):
 
 @role_required('DIRECTION', 'SCOLARITE')
 def attribuer_role(request, pk):
+    from core.models import LienParentEleve
     personne = get_object_or_404(Personne, pk=pk, groups__isnull=True, actif=False)
     ROLES_VALIDES = ('personnel', 'enseignant', 'eleve', 'parent')
+    LIENS_VALIDES = ('pere', 'mere', 'tuteur', 'tutrice', 'autre')
     role_selectionne = ''
     sub_form_actif = None
     erreurs = []
+
+    # Liste des élèves actifs pour la sélection des enfants (rôle parent)
+    eleves_actifs = Personne.objects.filter(
+        groups__name='ELEVE', actif=True
+    ).order_by('nom', 'prenom')
 
     sub_forms = {
         'personnel':  PersonnelSubForm(),
@@ -419,7 +481,23 @@ def attribuer_role(request, pk):
                     _assigner_role(personne, role_selectionne, sub_form_actif)
                     personne.actif = True
                     personne.save()
-                    from core.models import Notification
+
+                    # Créer les liens parent-enfant si rôle PARENT
+                    if role_selectionne == 'parent':
+                        enfant_ids = request.POST.getlist('enfants')
+                        lien_type  = request.POST.get('lien_type', 'autre')
+                        if lien_type not in LIENS_VALIDES:
+                            lien_type = 'autre'
+                        for eid in enfant_ids:
+                            try:
+                                enfant = Personne.objects.get(pk=eid, groups__name='ELEVE', actif=True)
+                                LienParentEleve.objects.get_or_create(
+                                    parent=personne, eleve=enfant,
+                                    defaults={'lien': lien_type}
+                                )
+                            except Personne.DoesNotExist:
+                                pass
+
                     Notification.objects.filter(
                         destinataire=request.user,
                         message__icontains=personne.email,
@@ -443,6 +521,7 @@ def attribuer_role(request, pk):
         'sub_forms': sub_forms,
         'role_selectionne': role_selectionne,
         'erreurs': erreurs,
+        'eleves_actifs': eleves_actifs,
     })
 
 
@@ -458,7 +537,7 @@ def rejeter_inscription(request, pk):
 
 # ─── Inscriptions ─────────────────────────────────────────────────────────────
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('DIRECTION', 'SCOLARITE', 'ADMINISTRATION')
 def gestion_inscriptions(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     inscriptions = Inscription.objects.filter(annee=annee_active).select_related(
@@ -484,14 +563,18 @@ def gestion_inscriptions(request):
 
     paginator = Paginator(inscriptions, 25)
     page_obj = paginator.get_page(request.GET.get('page'))
+    groupes_insc = list(request.user.groups.values_list('name', flat=True))
     form = InscriptionForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        try:
-            form.save()
-            messages.success(request, "Inscription enregistrée.")
-            return redirect('personnel:gestion_inscriptions')
-        except IntegrityError:
-            messages.error(request, "Cet élève est déjà inscrit pour cette année scolaire.")
+    if request.method == 'POST':
+        if 'ADMINISTRATION' in groupes_insc and 'DIRECTION' not in groupes_insc and 'SCOLARITE' not in groupes_insc:
+            return redirect('accounts:acces_refuse')
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, "Inscription enregistrée.")
+                return redirect('personnel:gestion_inscriptions')
+            except IntegrityError:
+                messages.error(request, "Cet élève est déjà inscrit pour cette année scolaire.")
     classes = Classe.objects.filter(annee=annee_active).order_by('nom') if annee_active else Classe.objects.none()
     return render(request, 'personnel/inscriptions/liste.html', {
         'page_obj': page_obj, 'form': form, 'annee_active': annee_active,
@@ -499,7 +582,7 @@ def gestion_inscriptions(request):
     })
 
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('DIRECTION', 'SCOLARITE')
 def changer_statut_inscription(request, pk):
     inscription = get_object_or_404(Inscription, pk=pk)
     if request.method == 'POST':
@@ -513,17 +596,28 @@ def changer_statut_inscription(request, pk):
 
 # ─── Absences (validation) ────────────────────────────────────────────────────
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('SCOLARITE', 'DIRECTION', 'ADMINISTRATION')
 def validation_absences(request):
-    absences = Absence.objects.filter(statut='en_attente').select_related(
+    statut_filtre = request.GET.get('statut', '')
+    absences = Absence.objects.select_related(
         'eleve', 'cours__matiere', 'periode'
-    ).order_by('-date_saisie')
-    return render(request, 'personnel/absences/liste.html', {'absences': absences})
+    ).order_by('-date_absence')
+    if statut_filtre:
+        absences = absences.filter(statut=statut_filtre)
+    return render(request, 'personnel/absences/liste.html', {
+        'absences': absences,
+        'statut_filtre': statut_filtre,
+    })
 
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('SCOLARITE', 'ENSEIGNANT')
 def valider_absence(request, pk):
     absence = get_object_or_404(Absence, pk=pk)
+    groupes = list(request.user.groups.values_list('name', flat=True))
+    # ENSEIGNANT ne peut valider que les absences de ses propres cours
+    if 'ENSEIGNANT' in groupes and absence.cours.enseignant != request.user:
+        messages.error(request, "Vous ne pouvez valider que les absences de vos propres cours.")
+        return redirect('enseignant:absences_cours', cours_id=absence.cours.pk)
     if request.method == 'POST':
         decision = request.POST.get('decision')
         if decision in ('justifiee', 'non_justifiee'):
@@ -531,12 +625,14 @@ def valider_absence(request, pk):
             absence.motif = request.POST.get('motif', '')
             absence.save()
             messages.success(request, "Absence traitée.")
+    if 'ENSEIGNANT' in groupes:
+        return redirect('enseignant:absences_cours', cours_id=absence.cours.pk)
     return redirect('personnel:validation_absences')
 
 
 # ─── Bulletins ────────────────────────────────────────────────────────────────
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('DIRECTION', 'SCOLARITE')
 def gestion_bulletins(request):
     annee = AnneeScolaire.objects.filter(active=True).first()
     periodes_qs = Periode.objects.filter(annee=annee).order_by('date_debut') if annee else []
@@ -551,7 +647,7 @@ def gestion_bulletins(request):
     })
 
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('DIRECTION', 'SCOLARITE')
 def generer_bulletins_periode(request, pk):
     periode = get_object_or_404(Periode, pk=pk)
     if periode.date_fin > date.today():
@@ -592,6 +688,17 @@ def generer_bulletins_periode(request, pk):
             if created:
                 nb_crees += 1
 
+        # Calcul du rang par matière pour chaque cours de la classe
+        cours_list = Cours.objects.filter(classe=classe, annee=annee)
+        for cours in cours_list:
+            resultats_cours = list(
+                ResultatMatiere.objects.filter(cours=cours, periode=periode).order_by('-moyenne')
+            )
+            for rang_mat, res in enumerate(resultats_cours, start=1):
+                res.rang = rang_mat
+            if resultats_cours:
+                ResultatMatiere.objects.bulk_update(resultats_cours, ['rang'])
+
     HistoriqueActions.objects.create(
         auteur=request.user,
         action=f"Génération bulletins période {periode}",
@@ -602,7 +709,7 @@ def generer_bulletins_periode(request, pk):
     return redirect('personnel:gestion_bulletins')
 
 
-@role_required('SCOLARITE', 'DIRECTION')
+@role_required('DIRECTION', 'SCOLARITE')
 def liste_bulletins_periode(request, pk):
     periode = get_object_or_404(Periode, pk=pk)
     bulletins = Bulletin.objects.filter(periode=periode).select_related(
@@ -617,23 +724,32 @@ def liste_bulletins_periode(request, pk):
     })
 
 
-@role_required('SCOLARITE', 'DIRECTION', 'ENSEIGNANT', 'ELEVE', 'PARENT')
+@role_required('DIRECTION', 'SCOLARITE', 'ENSEIGNANT', 'ELEVE', 'PARENT')
 def export_bulletin_pdf(request, bulletin_id):
     bulletin = get_object_or_404(Bulletin, pk=bulletin_id)
     eleve = bulletin.eleve
     periode = bulletin.periode
 
-    # Cloisonnement : élève et parent ne peuvent voir que leurs propres bulletins
+    # Cloisonnement par rôle
     user = request.user
     groupes = user.groups.values_list('name', flat=True)
     if 'ELEVE' in groupes and user != eleve:
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied
+        messages.error(request, "Vous n'avez pas accès à ce bulletin.")
+        return redirect('eleve:mes_bulletins')
     if 'PARENT' in groupes:
         from core.models import LienParentEleve
         if not LienParentEleve.objects.filter(parent=user, eleve=eleve).exists():
-            from django.core.exceptions import PermissionDenied
-            raise PermissionDenied
+            messages.error(request, "Vous n'avez pas accès à ce bulletin.")
+            return redirect('parent:mes_paiements')
+    if 'ENSEIGNANT' in groupes:
+        enseigne_classe = Cours.objects.filter(
+            enseignant=user, classe=bulletin.eleve.inscriptions.filter(
+                annee=bulletin.periode.annee, statut='actif'
+            ).values_list('classe', flat=True)
+        ).exists()
+        if not enseigne_classe:
+            messages.error(request, "Vous n'avez pas accès à ce bulletin.")
+            return redirect('enseignant:mes_cours')
 
     resultats = ResultatMatiere.objects.filter(
         eleve=eleve, periode=periode
@@ -757,26 +873,36 @@ def historique_actions(request):
 JOURS_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
 
 
-@role_required('DIRECTION', 'ADMINISTRATION')
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_edt(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     classes = Classe.objects.filter(annee=annee_active).order_by('nom') if annee_active else Classe.objects.none()
 
     classe_id = request.GET.get('classe')
     periode_id = request.GET.get('periode')
+    enseignant_id = request.GET.get('enseignant')
     classe_sel = None
     periode_sel = None
-    grille = None
+    enseignant_sel = None
 
     if annee_active:
         periodes = Periode.objects.filter(annee=annee_active).order_by('date_debut')
     else:
         periodes = Periode.objects.none()
 
+    groupes = list(request.user.groups.values_list('name', flat=True))
+    enseignants = Personne.objects.none()
+    if 'DIRECTION' in groupes or 'ADMINISTRATION' in groupes:
+        enseignants = Personne.objects.filter(
+            enseignant__isnull=False, actif=True
+        ).order_by('nom')
+
     if classe_id:
         classe_sel = get_object_or_404(Classe, pk=classe_id, annee=annee_active)
     if periode_id:
         periode_sel = get_object_or_404(Periode, pk=periode_id)
+    if enseignant_id and ('DIRECTION' in groupes or 'ADMINISTRATION' in groupes):
+        enseignant_sel = get_object_or_404(Personne, pk=enseignant_id, enseignant__isnull=False)
 
     creneaux = EmploiDuTemps.objects.none()
     initial = {}
@@ -802,7 +928,15 @@ def gestion_edt(request):
                 for err in errs:
                     messages.error(request, f"{field} : {err}")
 
-    if classe_sel and periode_sel:
+    if enseignant_sel:
+        # Vue DIRECTION : créneaux de l'enseignant sur toutes les classes
+        qs = EmploiDuTemps.objects.filter(
+            cours__enseignant=enseignant_sel
+        ).select_related('cours__matiere', 'cours__enseignant', 'cours__classe', 'salle', 'periode')
+        if periode_sel:
+            qs = qs.filter(periode=periode_sel)
+        creneaux = qs.order_by('jour', 'heure_debut')
+    elif classe_sel and periode_sel:
         creneaux = EmploiDuTemps.objects.filter(
             cours__classe=classe_sel, periode=periode_sel
         ).select_related('cours__matiere', 'cours__enseignant', 'salle').order_by(
@@ -815,6 +949,9 @@ def gestion_edt(request):
         'periodes': periodes,
         'classe_sel': classe_sel,
         'periode_sel': periode_sel,
+        'enseignants': enseignants,
+        'enseignant_sel': enseignant_sel,
+        'enseignant_id': enseignant_id or '',
         'creneaux': creneaux,
         'form': form,
         'classe_id': classe_id or '',
@@ -1151,10 +1288,14 @@ def envoyer_message(request):
         if dest_id and sujet and corps:
             try:
                 dest = Personne.objects.get(pk=dest_id, actif=True)
-                Message.objects.create(
-                    expediteur=request.user, destinataire=dest,
-                    sujet=sujet, corps=corps
-                )
+                piece = request.FILES.get('piece_jointe')
+                if piece and not piece.name.lower().endswith('.pdf'):
+                    messages.error(request, "Seuls les fichiers PDF sont acceptés.")
+                    return redirect('personnel:envoyer_message')
+                msg_obj = Message(expediteur=request.user, destinataire=dest, sujet=sujet, corps=corps)
+                if piece:
+                    msg_obj.piece_jointe = piece
+                msg_obj.save()
                 messages.success(request, f"Message envoyé à {dest.get_full_name()}.")
             except Personne.DoesNotExist:
                 messages.error(request, "Destinataire introuvable.")
@@ -1162,8 +1303,17 @@ def envoyer_message(request):
             messages.error(request, "Veuillez remplir tous les champs.")
         return redirect('personnel:messagerie')
 
-    destinataires = Personne.objects.filter(actif=True).exclude(pk=request.user.pk).order_by('nom')
-    return render(request, 'personnel/messagerie/nouveau.html', {'destinataires': destinataires})
+    groupes = list(request.user.groups.values_list('name', flat=True))
+    qs = Personne.objects.filter(actif=True).exclude(pk=request.user.pk)
+    if 'ELEVE' in groupes or 'PARENT' in groupes:
+        qs = qs.filter(groups__name__in=['DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES', 'ENSEIGNANT']).distinct()
+    ORDRE_ROLES = ['DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES', 'ENSEIGNANT', 'PARENT', 'ELEVE']
+    groupes_dest = {}
+    for role in ORDRE_ROLES:
+        membres = list(qs.filter(groups__name=role).order_by('nom', 'prenom'))
+        if membres:
+            groupes_dest[role] = membres
+    return render(request, 'personnel/messagerie/nouveau.html', {'groupes_dest': groupes_dest})
 
 
 @role_required(*ROLES_ADMIN, 'ENSEIGNANT', 'ELEVE', 'PARENT')
@@ -1173,8 +1323,8 @@ def lire_message(request, pk):
         Q(destinataire=request.user) | Q(expediteur=request.user), pk=pk
     ).first()
     if not msg:
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied
+        messages.error(request, "Ce message est introuvable ou ne vous appartient pas.")
+        return redirect('personnel:messagerie')
     if msg.destinataire == request.user and not msg.lu:
         msg.lu = True
         msg.save(update_fields=['lu'])
@@ -1183,12 +1333,17 @@ def lire_message(request, pk):
 
 # ─── Annonces générales ───────────────────────────────────────────────────────
 
-@role_required('DIRECTION', 'ADMINISTRATION')
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES', 'ENSEIGNANT')
 def gestion_annonces(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     annonces = Notification.objects.filter(type_notif='annonce', classe__isnull=False).order_by('-id')
+    groupes = list(request.user.groups.values_list('name', flat=True))
 
     if request.method == 'POST':
+        if 'ENSEIGNANT' in groupes:
+            return redirect('accounts:acces_refuse')
+        if 'FINANCES' in groupes and 'DIRECTION' not in groupes and 'ADMINISTRATION' not in groupes and 'SCOLARITE' not in groupes:
+            return redirect('accounts:acces_refuse')
         classe_id = request.POST.get('classe')
         msg_text  = request.POST.get('message', '').strip()
         if classe_id and msg_text:
@@ -1205,6 +1360,10 @@ def gestion_annonces(request):
         return redirect('personnel:gestion_annonces')
 
     classes = Classe.objects.filter(annee=annee_active).order_by('nom') if annee_active else Classe.objects.none()
+
+    if 'ENSEIGNANT' in groupes:
+        return render(request, 'enseignant/annonces.html', {'annonces': annonces})
+
     return render(request, 'personnel/annonces.html', {
         'annonces': annonces, 'classes': classes,
     })
@@ -1212,82 +1371,125 @@ def gestion_annonces(request):
 
 # ─── Module Finances ──────────────────────────────────────────────────────────
 
-@role_required('DIRECTION', 'FINANCES', 'ADMINISTRATION')
+NIVEAUX_STANDARD = ['6ème', '5ème', '4ème', '3ème', '2nde', '1ère', 'Terminale']
+
+
+@role_required('DIRECTION', 'FINANCES')
 def gestion_finances(request):
+    from django.db.models import Sum
     annee_active = AnneeScolaire.objects.filter(active=True).first()
+
+    tarifs = TarifNiveau.objects.filter(annee=annee_active).order_by('niveau') if annee_active else TarifNiveau.objects.none()
+
     frais_qs = FraisScolarite.objects.filter(annee=annee_active).select_related(
         'eleve', 'annee'
     ).order_by('statut', 'eleve__nom') if annee_active else FraisScolarite.objects.none()
 
-    # Filtres
     statut_filtre = request.GET.get('statut', '')
     if statut_filtre:
         frais_qs = frais_qs.filter(statut=statut_filtre)
 
-    # Résumé
-    from django.db.models import Sum
+    # Niveaux dans les classes + niveaux standard
+    niveaux_db = list(
+        Classe.objects.filter(annee=annee_active).values_list('niveau', flat=True).distinct()
+    ) if annee_active else []
+    niveaux = sorted(set(niveaux_db + NIVEAUX_STANDARD))
+
+    # Compte d'élèves par niveau pour affichage dans tableau tarifs
+    tarifs_data = []
+    for t in tarifs:
+        nb = 0
+        if annee_active:
+            classes = Classe.objects.filter(annee=annee_active, niveau=t.niveau)
+            nb = Inscription.objects.filter(classe__in=classes, annee=annee_active, statut='actif').count()
+        tarifs_data.append({'tarif': t, 'nb_eleves': nb})
+
     total_du   = frais_qs.aggregate(t=Sum('montant_du'))['t'] or 0
     total_paye = frais_qs.aggregate(t=Sum('montant_paye'))['t'] or 0
 
     paginator = Paginator(frais_qs, 20)
     page_obj  = paginator.get_page(request.GET.get('page'))
 
-    eleves_actifs = Personne.objects.filter(
-        groups__name='ELEVE', actif=True
-    ).order_by('nom', 'prenom')
+    # Annoter chaque frais avec le niveau de l'élève
+    for f in page_obj:
+        insc = Inscription.objects.filter(
+            eleve=f.eleve, annee=annee_active, statut='actif'
+        ).select_related('classe').first()
+        f.niveau_display = insc.classe.niveau if insc else '—'
 
     return render(request, 'personnel/finances/liste.html', {
         'page_obj': page_obj, 'annee_active': annee_active,
         'total_du': total_du, 'total_paye': total_paye,
         'reste': total_du - total_paye, 'statut_filtre': statut_filtre,
-        'eleves_actifs': eleves_actifs,
+        'tarifs_data': tarifs_data, 'niveaux': niveaux,
     })
 
 
-@role_required('DIRECTION', 'FINANCES', 'ADMINISTRATION')
+@role_required('FINANCES')
 def creer_frais(request):
+    """Crée/met à jour un tarif pour un niveau et génère les FraisScolarite pour tous les élèves du niveau."""
     if request.method == 'POST':
-        eleve_id   = request.POST.get('eleve')
-        montant_du = request.POST.get('montant_du', '0')
-        echeance   = request.POST.get('date_echeance') or None
-        annee      = AnneeScolaire.objects.filter(active=True).first()
+        niveau    = request.POST.get('niveau', '').strip()
+        montant   = request.POST.get('montant', '0')
+        echeance  = request.POST.get('date_echeance') or None
+        annee     = AnneeScolaire.objects.filter(active=True).first()
+        if not annee or not niveau:
+            messages.error(request, "Niveau et année actifs requis.")
+            return redirect('personnel:gestion_finances')
         try:
-            eleve = Personne.objects.get(pk=eleve_id, eleve__isnull=False)
-            FraisScolarite.objects.create(
-                eleve=eleve, annee=annee,
-                montant_du=montant_du, date_echeance=echeance,
+            tarif, _ = TarifNiveau.objects.update_or_create(
+                annee=annee, niveau=niveau,
+                defaults={'montant': montant, 'date_echeance': echeance}
             )
-            messages.success(request, "Frais créés avec succès.")
+            # Générer FraisScolarite pour tous les élèves inscrits dans ce niveau
+            classes_niveau = Classe.objects.filter(annee=annee, niveau=niveau)
+            nb_crees = 0
+            for cls in classes_niveau:
+                for insc in Inscription.objects.filter(classe=cls, annee=annee, statut='actif'):
+                    _, created = FraisScolarite.objects.get_or_create(
+                        eleve=insc.eleve, annee=annee,
+                        defaults={'montant_du': montant, 'date_echeance': echeance}
+                    )
+                    if created:
+                        nb_crees += 1
+            messages.success(request, f"Tarif {niveau} : {montant} FCFA. {nb_crees} fiche(s) créée(s).")
         except Exception as e:
             messages.error(request, str(e))
     return redirect('personnel:gestion_finances')
 
 
-@role_required('DIRECTION', 'FINANCES', 'ADMINISTRATION')
+@role_required('FINANCES')
 def enregistrer_paiement(request, frais_id):
+    import uuid
     frais = get_object_or_404(FraisScolarite, pk=frais_id)
     if request.method == 'POST':
-        montant  = request.POST.get('montant', '0')
-        date_p   = request.POST.get('date_paiement')
-        mode     = request.POST.get('mode', 'especes')
+        montant_str = request.POST.get('montant', '0')
+        date_p      = request.POST.get('date_paiement')
+        mode        = request.POST.get('mode', 'especes')
         try:
+            montant = int(montant_str)
+            if montant <= 0 or montant > frais.reste_a_payer:
+                messages.error(request, "Montant invalide ou supérieur au reste dû.")
+                return redirect('personnel:gestion_finances')
+            recu = f"PAI-{date.today().year}-{uuid.uuid4().hex[:8].upper()}"
             Paiement.objects.create(
                 frais=frais, montant=montant,
                 date_paiement=date_p, mode=mode,
-                saisi_par=request.user,
+                recu_numero=recu, saisi_par=request.user,
             )
-            messages.success(request, "Paiement enregistré.")
+            # Paiement.save() recalcule déjà montant_paye et statut — pas besoin de le refaire ici
+            messages.success(request, f"Paiement de {montant:,} FCFA enregistré. Reçu n° {recu}.")
             HistoriqueActions.objects.create(
                 auteur=request.user, action='Paiement enregistré',
                 table_cible='paiement', id_enreg=frais.pk,
-                details=f"Montant : {montant} FCFA"
+                details=f"Montant : {montant} FCFA — Reçu : {recu}"
             )
-        except Exception as e:
-            messages.error(request, str(e))
+        except (ValueError, TypeError) as e:
+            messages.error(request, f"Erreur : {e}")
     return redirect('personnel:gestion_finances')
 
 
-@role_required('DIRECTION', 'FINANCES', 'ADMINISTRATION')
+@role_required('FINANCES')
 def recu_paiement_pdf(request, paiement_id):
     paiement = get_object_or_404(Paiement, pk=paiement_id)
     frais    = paiement.frais
@@ -1347,6 +1549,216 @@ def recu_paiement_pdf(request, paiement_id):
     return response
 
 
+# ─── Bilan financier ─────────────────────────────────────────────────────────
+
+@role_required('DIRECTION', 'FINANCES')
+def bilan_financier(request):
+    from django.db.models import Sum, Count, Q
+
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    if not annee_active:
+        return render(request, 'personnel/finances/bilan.html', {'annee_active': None})
+
+    frais_qs = FraisScolarite.objects.filter(annee=annee_active)
+
+    # Totaux globaux
+    totaux = frais_qs.aggregate(
+        total_du=Sum('montant_du'),
+        total_paye=Sum('montant_paye'),
+    )
+    total_du   = totaux['total_du'] or 0
+    total_paye = totaux['total_paye'] or 0
+    total_reste = total_du - total_paye
+    taux = round(float(total_paye) / float(total_du) * 100, 1) if total_du else 0
+
+    # Comptages par statut
+    nb_paye    = frais_qs.filter(statut='paye').count()
+    nb_partiel = frais_qs.filter(statut='partiel').count()
+    nb_attente = frais_qs.filter(statut='en_attente').count()
+    nb_total   = frais_qs.count()
+
+    # Bilan par niveau (via inscriptions)
+    niveaux_bilan = []
+    classes_actives = Classe.objects.filter(annee=annee_active).values_list('niveau', flat=True).distinct()
+    for niveau in sorted(set(classes_actives)):
+        classes_niveau = Classe.objects.filter(annee=annee_active, niveau=niveau)
+        eleves_ids = Inscription.objects.filter(
+            classe__in=classes_niveau, annee=annee_active, statut='actif'
+        ).values_list('eleve_id', flat=True)
+        frais_niveau = frais_qs.filter(eleve_id__in=eleves_ids)
+        ag = frais_niveau.aggregate(du=Sum('montant_du'), paye=Sum('montant_paye'))
+        du   = ag['du'] or 0
+        paye = ag['paye'] or 0
+        reste = du - paye
+        tx = round(float(paye) / float(du) * 100, 1) if du else 0
+        niveaux_bilan.append({
+            'niveau': niveau,
+            'nb_eleves': eleves_ids.count(),
+            'total_du': du,
+            'total_paye': paye,
+            'total_reste': reste,
+            'taux': tx,
+            'nb_paye': frais_niveau.filter(statut='paye').count(),
+            'nb_partiel': frais_niveau.filter(statut='partiel').count(),
+            'nb_attente': frais_niveau.filter(statut='en_attente').count(),
+        })
+
+    # Historique des paiements récents (30 derniers)
+    paiements_recents = Paiement.objects.filter(
+        frais__annee=annee_active
+    ).select_related('frais__eleve', 'saisi_par').order_by('-date_paiement')[:30]
+
+    return render(request, 'personnel/finances/bilan.html', {
+        'annee_active': annee_active,
+        'total_du': total_du,
+        'total_paye': total_paye,
+        'total_reste': total_reste,
+        'taux': taux,
+        'nb_paye': nb_paye,
+        'nb_partiel': nb_partiel,
+        'nb_attente': nb_attente,
+        'nb_total': nb_total,
+        'niveaux_bilan': niveaux_bilan,
+        'paiements_recents': paiements_recents,
+    })
+
+
+@role_required('DIRECTION', 'FINANCES')
+def bilan_financier_pdf(request):
+    from django.db.models import Sum
+    from reportlab.platypus import HRFlowable
+    from reportlab.lib.colors import HexColor
+
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    if not annee_active:
+        messages.error(request, "Aucune année scolaire active.")
+        return redirect('personnel:bilan_financier')
+
+    frais_qs = FraisScolarite.objects.filter(annee=annee_active)
+    totaux   = frais_qs.aggregate(total_du=Sum('montant_du'), total_paye=Sum('montant_paye'))
+    total_du    = totaux['total_du'] or 0
+    total_paye  = totaux['total_paye'] or 0
+    total_reste = total_du - total_paye
+    taux = round(float(total_paye) / float(total_du) * 100, 1) if total_du else 0
+
+    nb_paye    = frais_qs.filter(statut='paye').count()
+    nb_partiel = frais_qs.filter(statut='partiel').count()
+    nb_attente = frais_qs.filter(statut='en_attente').count()
+
+    # Bilan par niveau
+    niveaux_bilan = []
+    for niveau in sorted(set(Classe.objects.filter(annee=annee_active).values_list('niveau', flat=True))):
+        classes_n  = Classe.objects.filter(annee=annee_active, niveau=niveau)
+        eleves_ids = Inscription.objects.filter(classe__in=classes_n, annee=annee_active, statut='actif').values_list('eleve_id', flat=True)
+        frais_n    = frais_qs.filter(eleve_id__in=eleves_ids)
+        ag = frais_n.aggregate(du=Sum('montant_du'), paye=Sum('montant_paye'))
+        du   = ag['du'] or 0
+        paye = ag['paye'] or 0
+        tx   = round(float(paye) / float(du) * 100, 1) if du else 0
+        niveaux_bilan.append((niveau, eleves_ids.count(), du, paye, du - paye, tx,
+                              frais_n.filter(statut='paye').count(),
+                              frais_n.filter(statut='partiel').count(),
+                              frais_n.filter(statut='en_attente').count()))
+
+    buf  = io.BytesIO()
+    doc  = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=2*cm, rightMargin=2*cm,
+                             topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    story  = []
+
+    GREEN  = HexColor('#16a34a')
+    RED    = HexColor('#dc2626')
+    BLUE   = HexColor('#2563eb')
+    PURPLE = HexColor('#7c3aed')
+    GRAY   = HexColor('#6b7280')
+    DARK   = HexColor('#0B1D3A')
+    LIGHT  = HexColor('#F9FAFB')
+    GOLD   = HexColor('#D97706')
+
+    title_s  = ParagraphStyle('T', parent=styles['Heading1'], alignment=TA_CENTER, fontSize=18, textColor=DARK, spaceAfter=2)
+    sub_s    = ParagraphStyle('S', parent=styles['Normal'],   alignment=TA_CENTER, fontSize=11, textColor=GRAY, spaceAfter=4)
+    head_s   = ParagraphStyle('H', parent=styles['Heading2'], fontSize=12, textColor=DARK, spaceBefore=10, spaceAfter=4)
+    normal_s = ParagraphStyle('N', parent=styles['Normal'],   fontSize=9)
+
+    # En-tête
+    story.append(Paragraph("ACADEMIQ", title_s))
+    story.append(Paragraph(f"Bilan financier — Année scolaire {annee_active.libelle}", sub_s))
+    story.append(Paragraph(f"Édité le {date.today().strftime('%d/%m/%Y')}", sub_s))
+    story.append(HRFlowable(width='100%', thickness=2, color=GOLD))
+    story.append(Spacer(1, 0.5*cm))
+
+    # Résumé global
+    story.append(Paragraph("Résumé global", head_s))
+    resume_data = [
+        ["Indicateur", "Montant / Valeur"],
+        ["Total dû",              f"{float(total_du):,.0f} FCFA"],
+        ["Total encaissé",        f"{float(total_paye):,.0f} FCFA"],
+        ["Reste à percevoir",     f"{float(total_reste):,.0f} FCFA"],
+        ["Taux de recouvrement",  f"{taux} %"],
+        ["Élèves à jour (payé)",  str(nb_paye)],
+        ["Paiement partiel",      str(nb_partiel)],
+        ["En attente",            str(nb_attente)],
+    ]
+    t_resume = Table(resume_data, colWidths=[9*cm, 8*cm])
+    t_resume.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,0),  DARK),
+        ('TEXTCOLOR',     (0,0), (-1,0),  colors.white),
+        ('FONTNAME',      (0,0), (-1,0),  'Helvetica-Bold'),
+        ('FONTSIZE',      (0,0), (-1,-1), 10),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [LIGHT, colors.white]),
+        ('GRID',          (0,0), (-1,-1), 0.4, HexColor('#E5E7EB')),
+        ('TOPPADDING',    (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TEXTCOLOR',     (1,2), (1,2),   GREEN),
+        ('TEXTCOLOR',     (1,3), (1,3),   RED),
+        ('TEXTCOLOR',     (1,4), (1,4),   PURPLE),
+        ('FONTNAME',      (1,2), (1,4),   'Helvetica-Bold'),
+    ]))
+    story.append(t_resume)
+    story.append(Spacer(1, 0.5*cm))
+
+    # Bilan par niveau
+    story.append(Paragraph("Détail par niveau", head_s))
+    niv_header = ["Niveau", "Élèves", "Total dû", "Encaissé", "Reste", "Taux", "Payés", "Partiels", "Attente"]
+    niv_data   = [niv_header] + [
+        [niv, str(nb), f"{float(du):,.0f}", f"{float(paye):,.0f}", f"{float(reste):,.0f}",
+         f"{tx}%", str(np), str(npa), str(na)]
+        for niv, nb, du, paye, reste, tx, np, npa, na in niveaux_bilan
+    ]
+    col_w = [2.2*cm, 1.4*cm, 2.4*cm, 2.4*cm, 2.4*cm, 1.4*cm, 1.2*cm, 1.2*cm, 1.2*cm]
+    t_niv = Table(niv_data, colWidths=col_w)
+    t_niv.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,0),  DARK),
+        ('TEXTCOLOR',     (0,0), (-1,0),  colors.white),
+        ('FONTNAME',      (0,0), (-1,0),  'Helvetica-Bold'),
+        ('FONTSIZE',      (0,0), (-1,-1), 8),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [LIGHT, colors.white]),
+        ('GRID',          (0,0), (-1,-1), 0.4, HexColor('#E5E7EB')),
+        ('TOPPADDING',    (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('ALIGN',         (1,0), (-1,-1), 'CENTER'),
+    ]))
+    story.append(t_niv)
+    story.append(Spacer(1, 0.5*cm))
+
+    # Pied de page
+    story.append(HRFlowable(width='100%', thickness=1, color=GRAY))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph(
+        f"Document généré par ACADEMIQ — {date.today().strftime('%d/%m/%Y')}",
+        ParagraphStyle('footer', parent=styles['Normal'], fontSize=8,
+                       textColor=GRAY, alignment=TA_CENTER)
+    ))
+
+    doc.build(story)
+    buf.seek(0)
+    fname = f"bilan_financier_{annee_active.libelle.replace('-', '_')}.pdf"
+    response = HttpResponse(buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{fname}"'
+    return response
+
+
 # ─── Calendrier scolaire ──────────────────────────────────────────────────────
 
 @role_required(*ROLES_ADMIN, 'ENSEIGNANT', 'ELEVE', 'PARENT')
@@ -1369,10 +1781,15 @@ def calendrier_scolaire(request):
         'description': e.description,
     } for e in evenements])
 
-    return render(request, 'personnel/calendrier.html', {
-        'evenements': evenements, 'annee_active': annee_active,
-        'events_json': events_json,
-    })
+    ctx = {'evenements': evenements, 'annee_active': annee_active, 'events_json': events_json}
+    groupes = list(request.user.groups.values_list('name', flat=True))
+    if 'ELEVE' in groupes:
+        return render(request, 'eleve/calendrier.html', ctx)
+    if 'PARENT' in groupes:
+        return render(request, 'parent/calendrier.html', ctx)
+    if 'ENSEIGNANT' in groupes:
+        return render(request, 'enseignant/calendrier.html', ctx)
+    return render(request, 'personnel/calendrier.html', ctx)
 
 
 @role_required('DIRECTION', 'ADMINISTRATION')

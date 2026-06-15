@@ -1,21 +1,121 @@
-{% extends 'base_personnel.html' %}{% block content %}
+{% extends 'base_personnel.html' %}
+{% block title %}Cours — ACADEMIQ{% endblock %}
+{% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold mb-0"><i class="bi bi-book me-2 text-primary"></i>Cours{% if annee_active %} <small class="text-muted fs-6">{{ annee_active.libelle }}</small>{% endif %}</h4>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAjout"><i class="bi bi-plus-circle me-1"></i>Nouveau cours</button>
+    <h4 class="fw-bold mb-0">
+        <i class="bi bi-book me-2 text-primary"></i>Cours
+        {% if annee_active %}<small class="text-muted fs-6">{{ annee_active.libelle }}</small>{% endif %}
+    </h4>
+    {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAjout">
+        <i class="bi bi-plus-circle me-1"></i>Nouveau cours
+    </button>
+    {% endif %}
 </div>
-<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-    <thead class="table-dark"><tr><th>Matiere</th><th>Classe</th><th>Enseignant</th><th>H/sem</th><th>Actions</th></tr></thead>
-    <tbody>{% for c in cours_list %}<tr>
-        <td class="fw-semibold">{{ c.matiere.nom_matiere }}</td><td>{{ c.classe.nom }}</td>
-        <td>{{ c.enseignant.get_full_name }}</td><td>{{ c.nb_heures_hebdo }}h</td>
-        <td><div class="d-flex gap-1">
-            <a href="{% url 'personnel:modifier_cours' c.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-            <a href="{% url 'personnel:supprimer_cours' c.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
-        </div></td>
-    </tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Aucun cours.</td></tr>{% endfor %}</tbody>
-</table></div></div></div>
-<div class="modal fade" id="modalAjout" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header bg-primary text-white"><h6 class="modal-title">Nouveau cours</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-    <form method="post"><div class="modal-body">{% csrf_token %}{% for field in form %}<div class="mb-3"><label class="form-label fw-semibold small">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
-    <div class="modal-footer"><button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-primary btn-sm">Creer</button></div></form>
-</div></div></div>{% endblock %}
+{% include 'partials/messages.html' %}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Matière</th><th>Classe</th><th>Enseignant</th><th>H/sem</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                {% for c in cours_list %}
+                <tr>
+                    <td class="fw-semibold">{{ c.matiere.nom_matiere }}</td>
+                    <td>{{ c.classe.nom }}</td>
+                    <td>{{ c.enseignant.get_full_name }}</td>
+                    <td>{{ c.nb_heures_hebdo }}h</td>
+                    <td>
+                        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'personnel:modifier_cours' c.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="post" action="{% url 'personnel:supprimer_cours' c.pk %}"
+                                  onsubmit="return confirm('Supprimer ce cours ?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-5">
+                    <i class="bi bi-book fs-2 d-block mb-2 opacity-25"></i>
+                    Aucun cours{% if not annee_active %}. Activez d'abord une année scolaire.{% else %} pour cette année.{% endif %}
+                </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+<!-- Modal nouveau cours -->
+<div class="modal fade" id="modalAjout" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h6 class="modal-title"><i class="bi bi-book me-2"></i>Nouveau cours</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="post">{% csrf_token %}
+            <div class="modal-body">
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+                </div>
+                {% endif %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Matière *</label>
+                        {{ form.matiere }}
+                        {% if form.matiere.errors %}<div class="text-danger small mt-1">{{ form.matiere.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Classe *</label>
+                        {{ form.classe }}
+                        {% if form.classe.errors %}<div class="text-danger small mt-1">{{ form.classe.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Enseignant * <small class="text-muted fw-normal">(nom + matière)</small></label>
+                        {{ form.enseignant }}
+                        {% if form.enseignant.errors %}<div class="text-danger small mt-1">{{ form.enseignant.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small">Année scolaire *</label>
+                        {{ form.annee }}
+                        {% if form.annee.errors %}<div class="text-danger small mt-1">{{ form.annee.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small">H/semaine</label>
+                        {{ form.nb_heures_hebdo }}
+                        {% if form.nb_heures_hebdo.errors %}<div class="text-danger small mt-1">{{ form.nb_heures_hebdo.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-circle me-1"></i>Créer le cours</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+{% endif %}{# fin DIRECTION/ADMINISTRATION #}
+{% endblock %}
+
+{% block extra_js %}
+{% if form.errors %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    new bootstrap.Modal(document.getElementById('modalAjout')).show();
+});
+</script>
+{% endif %}
+{% endblock %}

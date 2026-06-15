@@ -5,7 +5,8 @@ from django.core.paginator import Paginator
 from core.permissions import role_required
 from core.models import (
     Cours, Note, Absence, AnneeScolaire, Inscription,
-    ResultatMatiere, Notification,
+    ResultatMatiere, Notification, EmploiDuTemps, Periode,
+    Message, Personne, EvenementScolaire,
 )
 from .forms import NoteForm, AbsenceForm
 
@@ -153,6 +154,7 @@ def saisir_absence(request, cours_id):
     if request.method == 'POST' and form.is_valid():
         absence = form.save(commit=False)
         absence.cours = cours
+        absence.statut = 'non_justifiee'
         absence.save()
         messages.success(request, f"Absence enregistrée pour {absence.eleve.get_full_name()}.")
         return redirect('enseignant:absences_cours', cours_id=cours.pk)
@@ -182,8 +184,9 @@ def absences_cours(request, cours_id):
 @role_required('ENSEIGNANT')
 def notes_eleve(request, cours_id, eleve_id):
     cours = get_object_or_404(Cours, pk=cours_id, enseignant=request.user)
-    from core.models import Personne
+    from core.models import Personne, Inscription
     eleve = get_object_or_404(Personne, pk=eleve_id)
+    get_object_or_404(Inscription, eleve=eleve, classe=cours.classe, annee=cours.annee, statut='actif')
     notes = Note.objects.filter(cours=cours, eleve=eleve).select_related('periode').order_by('periode__date_debut', '-date_saisie')
     resultats = ResultatMatiere.objects.filter(cours=cours, eleve=eleve).select_related('periode')
     return render(request, 'enseignant/notes/par_eleve.html', {
@@ -191,6 +194,140 @@ def notes_eleve(request, cours_id, eleve_id):
         'eleve': eleve,
         'notes': notes,
         'resultats': resultats,
+    })
+
+
+# ─── Mon emploi du temps ─────────────────────────────────────────────────────
+
+JOURS_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+JOURS_LABELS = {
+    'lundi': 'Lundi', 'mardi': 'Mardi', 'mercredi': 'Mercredi',
+    'jeudi': 'Jeudi', 'vendredi': 'Vendredi', 'samedi': 'Samedi',
+}
+
+
+@role_required('ENSEIGNANT')
+def mon_edt(request):
+    from datetime import date
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    periodes = Periode.objects.filter(annee=annee_active).order_by('date_debut') if annee_active else Periode.objects.none()
+
+    periode_id = request.GET.get('periode')
+    periode_sel = None
+    creneaux_par_jour = {}
+
+    if annee_active:
+        if periode_id:
+            periode_sel = Periode.objects.filter(pk=periode_id, annee=annee_active).first()
+        else:
+            periode_sel = periodes.filter(date_debut__lte=date.today(), date_fin__gte=date.today()).first() or periodes.first()
+
+        if periode_sel:
+            creneaux = EmploiDuTemps.objects.filter(
+                cours__enseignant=request.user, periode=periode_sel,
+            ).select_related('cours__matiere', 'cours__classe', 'salle').order_by('heure_debut')
+            for jour in JOURS_ORDER:
+                slots = [c for c in creneaux if c.jour == jour]
+                if slots:
+                    creneaux_par_jour[jour] = slots
+
+    return render(request, 'enseignant/edt.html', {
+        'annee_active': annee_active,
+        'periodes': periodes,
+        'periode_sel': periode_sel,
+        'creneaux_par_jour': creneaux_par_jour,
+        'jours_labels': JOURS_LABELS,
+    })
+
+
+# ─── Messagerie ───────────────────────────────────────────────────────────────
+
+@role_required('ENSEIGNANT')
+def messagerie(request):
+    recus   = Message.objects.filter(destinataire=request.user).order_by('-date_envoi')
+    envoyes = Message.objects.filter(expediteur=request.user).order_by('-date_envoi')
+    nb_non_lus = recus.filter(lu=False).count()
+    return render(request, 'enseignant/messagerie/liste.html', {
+        'recus': recus[:20], 'envoyes': envoyes[:20],
+        'nb_non_lus': nb_non_lus,
+    })
+
+
+@role_required('ENSEIGNANT')
+def envoyer_message(request):
+    if request.method == 'POST':
+        dest_id = request.POST.get('destinataire')
+        sujet   = request.POST.get('sujet', '').strip()
+        corps   = request.POST.get('corps', '').strip()
+        if dest_id and sujet and corps:
+            try:
+                dest = Personne.objects.get(pk=dest_id, actif=True)
+                piece = request.FILES.get('piece_jointe')
+                if piece and not piece.name.lower().endswith('.pdf'):
+                    messages.error(request, "Seuls les fichiers PDF sont acceptés.")
+                    return redirect('enseignant:envoyer_message')
+                msg_obj = Message(expediteur=request.user, destinataire=dest, sujet=sujet, corps=corps)
+                if piece:
+                    msg_obj.piece_jointe = piece
+                msg_obj.save()
+                messages.success(request, f"Message envoyé à {dest.get_full_name()}.")
+            except Personne.DoesNotExist:
+                messages.error(request, "Destinataire introuvable.")
+        else:
+            messages.error(request, "Veuillez remplir tous les champs.")
+        return redirect('enseignant:messagerie')
+    qs = Personne.objects.filter(actif=True).exclude(pk=request.user.pk)
+    ORDRE_ROLES = ['DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES', 'ENSEIGNANT', 'PARENT', 'ELEVE']
+    groupes_dest = {}
+    for role in ORDRE_ROLES:
+        membres = list(qs.filter(groups__name=role).order_by('nom', 'prenom'))
+        if membres:
+            groupes_dest[role] = membres
+    return render(request, 'enseignant/messagerie/nouveau.html', {'groupes_dest': groupes_dest})
+
+
+@role_required('ENSEIGNANT')
+def lire_message(request, pk):
+    from django.db.models import Q
+    from django.core.exceptions import PermissionDenied
+    msg = Message.objects.filter(
+        Q(destinataire=request.user) | Q(expediteur=request.user), pk=pk
+    ).first()
+    if not msg:
+        messages.error(request, "Ce message est introuvable ou ne vous appartient pas.")
+        return redirect('enseignant:messagerie')
+    if msg.destinataire == request.user and not msg.lu:
+        msg.lu = True
+        msg.save(update_fields=['lu'])
+    return render(request, 'enseignant/messagerie/detail.html', {'msg': msg})
+
+
+# ─── Calendrier scolaire ──────────────────────────────────────────────────────
+
+@role_required('ENSEIGNANT')
+def mon_calendrier(request):
+    import json
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    evenements = EvenementScolaire.objects.filter(
+        annee=annee_active
+    ).order_by('date_debut') if annee_active else EvenementScolaire.objects.none()
+
+    couleurs = {
+        'vacances': '#D97706', 'examen': '#dc2626',
+        'reunion': '#2563eb', 'ferie': '#16a34a', 'autre': '#6b7280',
+    }
+    events_json = json.dumps([{
+        'title': e.titre,
+        'start': e.date_debut.isoformat(),
+        'end':   e.date_fin.isoformat(),
+        'color': couleurs.get(e.type_event, '#6b7280'),
+        'description': e.description,
+    } for e in evenements])
+
+    return render(request, 'enseignant/calendrier.html', {
+        'evenements': evenements,
+        'annee_active': annee_active,
+        'events_json': events_json,
     })
 
 

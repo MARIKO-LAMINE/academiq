@@ -103,6 +103,7 @@
 <!-- Accès rapide -->
 <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em">Accès rapide</h6>
 <div class="row g-3">
+    {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}
     <div class="col-6 col-md-4 col-lg-3">
         <a href="{% url 'personnel:gestion_annees' %}" class="card border-0 text-decoration-none h-100">
             <div class="card-body text-center py-4">
@@ -111,6 +112,8 @@
             </div>
         </a>
     </div>
+    {% endif %}
+    {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user or 'ADMINISTRATION' in groupes_user %}
     <div class="col-6 col-md-4 col-lg-3">
         <a href="{% url 'personnel:gestion_classes' %}" class="card border-0 text-decoration-none h-100">
             <div class="card-body text-center py-4">
@@ -135,6 +138,8 @@
             </div>
         </a>
     </div>
+    {% endif %}
+    {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}
     <div class="col-6 col-md-4 col-lg-3">
         <a href="{% url 'personnel:gestion_bulletins' %}" class="card border-0 text-decoration-none h-100">
             <div class="card-body text-center py-4">
@@ -143,6 +148,8 @@
             </div>
         </a>
     </div>
+    {% endif %}
+    {% if 'DIRECTION' in groupes_user %}
     <div class="col-6 col-md-4 col-lg-3">
         <a href="{% url 'personnel:gestion_comptes' %}" class="card border-0 text-decoration-none h-100">
             <div class="card-body text-center py-4">
@@ -151,6 +158,25 @@
             </div>
         </a>
     </div>
+    {% endif %}
+    {% if 'DIRECTION' in groupes_user or 'FINANCES' in groupes_user %}
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:gestion_finances' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-cash-coin fs-2 text-success mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Frais de scolarité</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{% url 'personnel:bilan_financier' %}" class="card border-0 text-decoration-none h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-bar-chart-line fs-2 text-primary mb-2 d-block"></i>
+                <div class="small fw-semibold text-dark">Bilan financier</div>
+            </div>
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

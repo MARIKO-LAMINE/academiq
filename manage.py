@@ -3,6 +3,11 @@
 import os
 import sys
 
+# Ajoute le répertoire des apps au Python path
+_apps_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'academiq')
+if _apps_dir not in sys.path:
+    sys.path.insert(0, _apps_dir)
+
 
 def main():
     """Run administrative tasks."""

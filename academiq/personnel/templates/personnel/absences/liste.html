@@ -1,14 +1,55 @@
 {% extends 'base_personnel.html' %}{% block content %}
-<h4 class="fw-bold mb-4"><i class="bi bi-person-x me-2 text-danger"></i>Absences en attente</h4>
-<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-    <thead class="table-dark"><tr><th>Eleve</th><th>Cours</th><th>Date</th><th>Heures</th><th>Decision</th></tr></thead>
-    <tbody>{% for a in absences %}<tr>
-        <td class="fw-semibold">{{ a.eleve.get_full_name }}</td><td>{{ a.cours.matiere.nom_matiere }}</td>
-        <td>{{ a.date_absence|date:"d/m/Y" }}</td><td>{{ a.nb_heures }}h</td>
-        <td><form method="post" action="{% url 'personnel:valider_absence' a.pk %}" class="d-flex gap-1 align-items-center">{% csrf_token %}
-            <input type="text" name="motif" class="form-control form-control-sm" placeholder="Motif" style="width:140px">
-            <button type="submit" name="decision" value="justifiee" class="btn btn-sm btn-success"><i class="bi bi-check"></i></button>
-            <button type="submit" name="decision" value="non_justifiee" class="btn btn-sm btn-danger"><i class="bi bi-x"></i></button>
-        </form></td>
-    </tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-check-circle fs-4 d-block mb-2 text-success"></i>Aucune absence en attente.</td></tr>{% endfor %}</tbody>
-</table></div></div></div>{% endblock %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-person-x me-2 text-danger"></i>Suivi des absences</h4>
+    <form method="get" class="d-flex align-items-center gap-2">
+        <select name="statut" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:180px">
+            <option value="">Tous les statuts</option>
+            <option value="non_justifiee" {% if statut_filtre == 'non_justifiee' %}selected{% endif %}>Non justifiées</option>
+            <option value="justifiee" {% if statut_filtre == 'justifiee' %}selected{% endif %}>Justifiées</option>
+            <option value="en_attente" {% if statut_filtre == 'en_attente' %}selected{% endif %}>En attente</option>
+        </select>
+    </form>
+</div>
+<div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+    <thead class="table-dark">
+        <tr>
+            <th>Élève</th><th>Cours</th><th>Date</th><th>Heures</th><th>Statut</th>
+            {% if 'SCOLARITE' in groupes_user %}<th>Action</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for a in absences %}
+    <tr>
+        <td class="fw-semibold">{{ a.eleve.get_full_name }}</td>
+        <td>{{ a.cours.matiere.nom_matiere }}</td>
+        <td>{{ a.date_absence|date:"d/m/Y" }}</td>
+        <td>{{ a.nb_heures }}h</td>
+        <td>
+            {% if a.statut == 'justifiee' %}<span class="badge bg-success">Justifiée</span>
+            {% elif a.statut == 'non_justifiee' %}<span class="badge bg-danger">Non justifiée</span>
+            {% else %}<span class="badge bg-warning text-dark">En attente</span>{% endif %}
+        </td>
+        {% if 'SCOLARITE' in groupes_user %}
+        <td>
+            {% if a.statut != 'justifiee' %}
+            <form method="post" action="{% url 'personnel:valider_absence' a.pk %}" class="d-flex gap-1 align-items-center">
+                {% csrf_token %}
+                <input type="text" name="motif" class="form-control form-control-sm" placeholder="Motif" style="min-width:120px">
+                <input type="hidden" name="decision" value="justifiee">
+                <button type="submit" class="btn btn-sm btn-success" title="Marquer justifiée"><i class="bi bi-check"></i></button>
+            </form>
+            {% else %}<span class="text-muted small">—</span>{% endif %}
+        </td>
+        {% endif %}
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-center text-muted py-4">
+        <i class="bi bi-check-circle fs-4 d-block mb-2 text-success opacity-50"></i>
+        Aucune absence{% if statut_filtre %} avec ce statut{% endif %}.
+    </td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div></div></div>
+{% endblock %}

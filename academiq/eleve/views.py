@@ -5,6 +5,7 @@ from core.permissions import role_required
 from core.models import (
     AnneeScolaire, Inscription, Note, Absence,
     Bulletin, Notification, ResultatMatiere, Cours,
+    EmploiDuTemps, Periode,
 )
 
 
@@ -127,6 +128,69 @@ def detail_bulletin(request, bulletin_id):
 
     ctx.update({'bulletin': bulletin, 'resultats': resultats})
     return render(request, 'eleve/bulletin_detail.html', ctx)
+
+
+# ─── Annonces ────────────────────────────────────────────────────────────────
+
+@role_required('ELEVE')
+def mes_annonces(request):
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    ctx = _get_eleve_context(request.user, annee_active)
+
+    annonces = Notification.objects.none()
+    if ctx['inscription']:
+        annonces = Notification.objects.filter(
+            type_notif='annonce',
+            classe=ctx['inscription'].classe,
+        ).order_by('-date_envoi')
+
+    ctx['annonces'] = annonces
+    return render(request, 'eleve/annonces.html', ctx)
+
+
+# ─── Emploi du temps ─────────────────────────────────────────────────────────
+
+JOURS_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+JOURS_LABELS = {
+    'lundi': 'Lundi', 'mardi': 'Mardi', 'mercredi': 'Mercredi',
+    'jeudi': 'Jeudi', 'vendredi': 'Vendredi', 'samedi': 'Samedi',
+}
+
+
+@role_required('ELEVE')
+def mon_edt(request):
+    from datetime import date
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    ctx = _get_eleve_context(request.user, annee_active)
+
+    periodes = Periode.objects.filter(annee=annee_active).order_by('date_debut') if annee_active else Periode.objects.none()
+    periode_id = request.GET.get('periode')
+    periode_sel = None
+    creneaux_par_jour = {}
+
+    if ctx['inscription'] and annee_active:
+        if periode_id:
+            periode_sel = periodes.filter(pk=periode_id).first()
+        else:
+            periode_sel = periodes.filter(date_debut__lte=date.today(), date_fin__gte=date.today()).first() or periodes.first()
+
+        if periode_sel:
+            creneaux = EmploiDuTemps.objects.filter(
+                cours__classe=ctx['inscription'].classe,
+                periode=periode_sel,
+            ).select_related('cours__matiere', 'cours__enseignant', 'salle').order_by('heure_debut')
+            for jour in JOURS_ORDER:
+                slots = [c for c in creneaux if c.jour == jour]
+                if slots:
+                    creneaux_par_jour[jour] = slots
+
+    ctx.update({
+        'periodes': periodes,
+        'periode_sel': periode_sel,
+        'creneaux_par_jour': creneaux_par_jour,
+        'jours_labels': JOURS_LABELS,
+    })
+    return render(request, 'eleve/edt.html', ctx)
 
 
 # ─── Notifications ────────────────────────────────────────────────────────────

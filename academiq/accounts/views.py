@@ -82,7 +82,7 @@ def dashboard(request):
 
 
 def acces_refuse(request):
-    return render(request, 'accounts/403.html', status=403)
+    return render(request, 'accounts/403.html')
 
 
 @login_required

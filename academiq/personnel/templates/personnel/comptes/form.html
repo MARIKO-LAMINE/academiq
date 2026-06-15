@@ -3,7 +3,7 @@
 <div class="row justify-content-center"><div class="col-md-8"><div class="card">
     <div class="card-header bg-primary text-white"><h6 class="mb-0"><i class="bi bi-person-plus me-2"></i>{{ titre }}</h6></div>
     <div class="card-body">
-        <form method="post" enctype="multipart/form-data">{% csrf_token %}
+        <form method="post" enctype="multipart/form-data" id="createForm" novalidate>{% csrf_token %}
             <h6 class="text-muted text-uppercase small mb-3">Role</h6>
             {% for field in role_form %}<div class="mb-3"><label class="form-label fw-semibold small">{{ field.label }}</label>{{ field }}</div>{% endfor %}
             <hr>
@@ -24,6 +24,13 @@
 </div></div></div>
 {% block extra_js %}<script>
 const sel=document.querySelector('[name="role"]');
-function show(){['personnel','enseignant','eleve','parent'].forEach(r=>{document.getElementById('sub-'+r).style.display=sel.value===r?'':'none';});}
+function show(){
+    ['personnel','enseignant','eleve','parent'].forEach(r=>{
+        const el=document.getElementById('sub-'+r);
+        const active=sel.value===r;
+        el.style.display=active?'':'none';
+        el.querySelectorAll('input,select,textarea').forEach(f=>{f.disabled=!active;});
+    });
+}
 sel.addEventListener('change',show);show();
 </script>{% endblock %}{% endblock %}

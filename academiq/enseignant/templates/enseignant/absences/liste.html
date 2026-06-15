@@ -14,7 +14,7 @@
 <div class="card border-0">
     <div class="card-body p-0">
         <table class="table table-hover align-middle mb-0">
-            <thead class="table-dark"><tr><th>Eleve</th><th>Date</th><th>Heures</th><th>Periode</th><th>Statut</th></tr></thead>
+            <thead class="table-dark"><tr><th>Eleve</th><th>Date</th><th>Heures</th><th>Periode</th><th>Statut</th><th>Action</th></tr></thead>
             <tbody>
                 {% for a in page_obj %}
                 <tr>
@@ -24,8 +24,24 @@
                     <td class="small">{{ a.periode.nom }}</td>
                     <td>
                         {% if a.statut == 'en_attente' %}<span class="badge bg-secondary">En attente</span>
-                        {% elif a.statut == 'justifiee' %}<span class="badge bg-success">Justifiee</span>
-                        {% else %}<span class="badge bg-danger">Non justifiee</span>{% endif %}
+                        {% elif a.statut == 'justifiee' %}<span class="badge bg-success">Justifiée</span>
+                        {% else %}<span class="badge bg-danger">Non justifiée</span>{% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                        {% if a.statut != 'justifiee' %}
+                        <form method="post" action="{% url 'personnel:valider_absence' a.pk %}">
+                            {% csrf_token %}<input type="hidden" name="decision" value="justifiee">
+                            <button class="btn btn-sm btn-success" title="Marquer justifiée"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                        {% endif %}
+                        {% if a.statut != 'non_justifiee' %}
+                        <form method="post" action="{% url 'personnel:valider_absence' a.pk %}">
+                            {% csrf_token %}<input type="hidden" name="decision" value="non_justifiee">
+                            <button class="btn btn-sm btn-danger" title="Marquer non justifiée"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                        {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

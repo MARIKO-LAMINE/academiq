@@ -1,4 +1,4 @@
-from .models import Notification, Absence, Personne, Message
+from .models import Notification, Absence, Personne, Message, LienParentEleve
 
 
 def notifications_context(request):
@@ -17,4 +17,8 @@ def notifications_context(request):
         context['inscrits_en_attente'] = Personne.objects.filter(
             groups__isnull=True, actif=False, is_superuser=False
         ).count()
+    if 'PARENT' in groupes:
+        context['enfants_liens'] = LienParentEleve.objects.filter(
+            parent=request.user
+        ).select_related('eleve')
     return context

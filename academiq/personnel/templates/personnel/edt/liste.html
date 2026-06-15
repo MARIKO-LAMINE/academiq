@@ -18,10 +18,29 @@
 </div>
 {% else %}
 
-<!-- Filtres classe / période -->
+<!-- Filtres -->
 <div class="card mb-4 shadow-sm border-0">
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end">
+
+            {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+            <!-- Filtre enseignant (DIRECTION / ADMINISTRATION — consultation seulement) -->
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">
+                    <i class="bi bi-person-badge me-1 text-info"></i>Consulter l'EDT d'un enseignant
+                    <span class="text-muted fw-normal">(lecture seule)</span>
+                </label>
+                <select name="enseignant" class="form-select border-info" onchange="this.form.submit()">
+                    <option value="">-- Choisir un enseignant --</option>
+                    {% for e in enseignants %}
+                    <option value="{{ e.pk }}" {% if enseignant_sel and enseignant_sel.pk == e.pk %}selected{% endif %}>
+                        {{ e.get_full_name }}{% if e.enseignant.specialite %} ({{ e.enseignant.specialite }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
             <div class="col-md-4">
                 <label class="form-label fw-semibold small">Classe</label>
                 <select name="classe" class="form-select" onchange="this.form.submit()">
@@ -44,23 +63,76 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if 'DIRECTION' not in groupes_user and 'ADMINISTRATION' not in groupes_user %}
             <div class="col-md-4">
                 <button type="submit" class="btn btn-outline-primary w-100">
                     <i class="bi bi-search me-1"></i>Afficher
                 </button>
             </div>
+            {% endif %}
         </form>
     </div>
 </div>
 
-{% if not classe_sel or not periode_sel %}
+{% if enseignant_sel %}
+<!-- ─── Vue enseignant (DIRECTION / ADMINISTRATION) ─── -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">
+        <i class="bi bi-person-badge me-2 text-primary"></i>{{ enseignant_sel.get_full_name }}
+        {% if enseignant_sel.enseignant.specialite %}<span class="text-muted fs-6">({{ enseignant_sel.enseignant.specialite }})</span>{% endif %}
+        {% if periode_sel %}<span class="text-muted mx-2">·</span><span class="text-muted fs-6">{{ periode_sel.nom }}</span>{% endif %}
+    </h5>
+</div>
+
+{% regroup creneaux by jour as creneaux_par_jour %}
+{% if creneaux_par_jour %}
+{% for groupe in creneaux_par_jour %}
+<div class="card shadow-sm mb-3 border-0">
+    <div class="card-header fw-semibold bg-primary text-white py-2">
+        <i class="bi bi-clock me-2"></i><span class="text-capitalize">{{ groupe.grouper }}</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Horaire</th><th>Matière</th><th>Classe</th><th>Salle</th><th>Période</th></tr>
+            </thead>
+            <tbody>
+            {% for c in groupe.list %}
+            <tr>
+                <td class="fw-semibold text-nowrap">{{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}</td>
+                <td>{{ c.cours.matiere.nom_matiere }}</td>
+                <td><span class="badge bg-secondary">{{ c.cours.classe.nom }}</span></td>
+                <td><span class="badge bg-light text-dark border">{{ c.salle.numero }}</span></td>
+                <td class="text-muted small">{{ c.periode.nom }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-calendar-x fs-2 d-block mb-3"></i>
+        Aucun créneau pour cet enseignant{% if periode_sel %} sur cette période{% endif %}.
+    </div>
+</div>
+{% endif %}
+
+{% elif not classe_sel or not periode_sel %}
 <div class="alert alert-info border-0">
     <i class="bi bi-info-circle me-2"></i>
-    Sélectionnez une <strong>classe</strong> et une <strong>période</strong> pour afficher ou créer des créneaux.
+    {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+    Pour <strong>créer ou modifier</strong> des créneaux : choisissez une <strong>classe</strong> et une <strong>période</strong> ci-dessus.
+    Pour <strong>consulter</strong> le planning d'un enseignant : utilisez le menu "Consulter l'EDT d'un enseignant".
+    {% else %}
+    Sélectionnez une <strong>classe</strong> et une <strong>période</strong> pour afficher les créneaux.
+    {% endif %}
 </div>
-{% else %}
 
-<!-- En-tête classe / période sélectionnées -->
+{% else %}
+<!-- ─── Vue par classe ─── -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0">
         <i class="bi bi-people me-2 text-primary"></i>{{ classe_sel.nom }}
@@ -70,14 +142,14 @@
         <span class="badge bg-warning text-dark ms-2">Clôturée</span>
         {% endif %}
     </h5>
+    {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAjout">
         <i class="bi bi-plus-circle me-1"></i>Ajouter un créneau
     </button>
+    {% endif %}
 </div>
 
-<!-- Liste des créneaux par jour -->
 {% regroup creneaux by jour as creneaux_par_jour %}
-
 {% if creneaux_par_jour %}
 {% for groupe in creneaux_par_jour %}
 <div class="card shadow-sm mb-3 border-0">
@@ -88,42 +160,35 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
-                    <tr>
-                        <th>Horaire</th>
-                        <th>Matière</th>
-                        <th>Enseignant</th>
-                        <th>Salle</th>
-                        <th style="width:60px"></th>
-                    </tr>
+                    <tr><th>Horaire</th><th>Matière</th><th>Enseignant</th><th>Salle</th><th style="width:60px"></th></tr>
                 </thead>
                 <tbody>
-                    {% for c in groupe.list %}
-                    <tr>
-                        <td class="fw-semibold text-nowrap">
-                            {{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}
-                        </td>
-                        <td>{{ c.cours.matiere.nom_matiere }}</td>
-                        <td>{{ c.cours.enseignant.get_full_name }}</td>
-                        <td><span class="badge bg-secondary">{{ c.salle.numero }}</span></td>
-                        <td>
-                            <form method="post" action="{% url 'personnel:supprimer_creneau' c.pk %}"
-                                  onsubmit="return confirm('Supprimer ce créneau ?')">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="?classe={{ classe_id }}&periode={{ periode_id }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                {% for c in groupe.list %}
+                <tr>
+                    <td class="fw-semibold text-nowrap">{{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}</td>
+                    <td>{{ c.cours.matiere.nom_matiere }}</td>
+                    <td>{{ c.cours.enseignant.get_full_name }}</td>
+                    <td><span class="badge bg-secondary">{{ c.salle.numero }}</span></td>
+                    <td>
+                        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+                        <form method="post" action="{% url 'personnel:supprimer_creneau' c.pk %}"
+                              onsubmit="return confirm('Supprimer ce créneau ?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="?classe={{ classe_id }}&periode={{ periode_id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 {% endfor %}
-
 {% else %}
 <div class="card shadow-sm border-0">
     <div class="card-body text-center py-5 text-muted">
@@ -133,8 +198,7 @@
     </div>
 </div>
 {% endif %}
-
-{% endif %}{# fin classe_sel et periode_sel #}
+{% endif %}{# fin enseignant_sel / classe+periode #}
 {% endif %}{# fin annee_active #}
 
 
@@ -145,8 +209,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title">
-                    <i class="bi bi-plus-circle me-2"></i>
-                    Ajouter un créneau — {{ classe_sel.nom }}
+                    <i class="bi bi-plus-circle me-2"></i>Ajouter un créneau — {{ classe_sel.nom }}
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -157,87 +220,49 @@
                         <i class="bi bi-info-circle me-1 text-primary"></i>
                         Choisissez la matière, le jour, les heures et la salle pour ce créneau hebdomadaire.
                     </div>
-
-                    <!-- Matière (cours) -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-book me-1 text-primary"></i>Matière / Cours *
-                        </label>
+                        <label class="form-label fw-semibold"><i class="bi bi-book me-1 text-primary"></i>Matière / Cours *</label>
                         {{ form.cours }}
-                        {% if form.cours.errors %}
-                        <div class="text-danger small mt-1">{{ form.cours.errors|join:", " }}</div>
-                        {% endif %}
-                        <div class="form-text">Sélectionnez la matière enseignée dans cette classe.</div>
+                        {% if form.cours.errors %}<div class="text-danger small mt-1">{{ form.cours.errors|join:", " }}</div>{% endif %}
                     </div>
-
-                    <!-- Période -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-calendar-range me-1 text-primary"></i>Période *
-                        </label>
+                        <label class="form-label fw-semibold"><i class="bi bi-calendar-range me-1 text-primary"></i>Période *</label>
                         {{ form.periode }}
-                        {% if form.periode.errors %}
-                        <div class="text-danger small mt-1">{{ form.periode.errors|join:", " }}</div>
-                        {% endif %}
+                        {% if form.periode.errors %}<div class="text-danger small mt-1">{{ form.periode.errors|join:", " }}</div>{% endif %}
                     </div>
-
-                    <!-- Jour + Salle sur la même ligne -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bi bi-calendar-day me-1 text-primary"></i>Jour de la semaine *
-                            </label>
+                            <label class="form-label fw-semibold"><i class="bi bi-calendar-day me-1 text-primary"></i>Jour *</label>
                             {{ form.jour }}
-                            {% if form.jour.errors %}
-                            <div class="text-danger small mt-1">{{ form.jour.errors|join:", " }}</div>
-                            {% endif %}
+                            {% if form.jour.errors %}<div class="text-danger small mt-1">{{ form.jour.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bi bi-building me-1 text-primary"></i>Salle *
-                            </label>
+                            <label class="form-label fw-semibold"><i class="bi bi-building me-1 text-primary"></i>Salle *</label>
                             {{ form.salle }}
-                            {% if form.salle.errors %}
-                            <div class="text-danger small mt-1">{{ form.salle.errors|join:", " }}</div>
-                            {% endif %}
+                            {% if form.salle.errors %}<div class="text-danger small mt-1">{{ form.salle.errors|join:", " }}</div>{% endif %}
                         </div>
                     </div>
-
-                    <!-- Heures sur la même ligne -->
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bi bi-clock me-1 text-primary"></i>Heure de début *
-                            </label>
+                            <label class="form-label fw-semibold"><i class="bi bi-clock me-1 text-primary"></i>Heure début *</label>
                             {{ form.heure_debut }}
-                            {% if form.heure_debut.errors %}
-                            <div class="text-danger small mt-1">{{ form.heure_debut.errors|join:", " }}</div>
-                            {% endif %}
+                            {% if form.heure_debut.errors %}<div class="text-danger small mt-1">{{ form.heure_debut.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bi bi-clock-fill me-1 text-primary"></i>Heure de fin *
-                            </label>
+                            <label class="form-label fw-semibold"><i class="bi bi-clock-fill me-1 text-primary"></i>Heure fin *</label>
                             {{ form.heure_fin }}
-                            {% if form.heure_fin.errors %}
-                            <div class="text-danger small mt-1">{{ form.heure_fin.errors|join:", " }}</div>
-                            {% endif %}
+                            {% if form.heure_fin.errors %}<div class="text-danger small mt-1">{{ form.heure_fin.errors|join:", " }}</div>{% endif %}
                         </div>
                     </div>
-
                     {% if form.non_field_errors %}
                     <div class="alert alert-danger mt-3">
-                        {% for err in form.non_field_errors %}
-                        <div><i class="bi bi-exclamation-triangle me-1"></i>{{ err }}</div>
-                        {% endfor %}
+                        {% for err in form.non_field_errors %}<div><i class="bi bi-exclamation-triangle me-1"></i>{{ err }}</div>{% endfor %}
                     </div>
                     {% endif %}
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-check-circle me-1"></i>Enregistrer le créneau
-                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-circle me-1"></i>Enregistrer</button>
                 </div>
             </form>
         </div>

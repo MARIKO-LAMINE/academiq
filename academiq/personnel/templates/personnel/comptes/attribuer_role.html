@@ -98,6 +98,37 @@
                             {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
                         </div>
                         {% endfor %}
+                        <!-- Lien avec les enfants -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Lien de parenté</label>
+                            <select name="lien_type" class="form-select">
+                                <option value="pere">Père</option>
+                                <option value="mere">Mère</option>
+                                <option value="tuteur">Tuteur</option>
+                                <option value="tutrice">Tutrice</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Enfants (élèves)</label>
+                            {% if eleves_actifs %}
+                            <div class="border rounded p-2" style="max-height:200px;overflow-y:auto">
+                                {% for eleve in eleves_actifs %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="enfants"
+                                           value="{{ eleve.pk }}" id="enfant_{{ eleve.pk }}">
+                                    <label class="form-check-label" for="enfant_{{ eleve.pk }}">
+                                        {{ eleve.get_full_name }}
+                                        {% if eleve.eleve.matricule %}<small class="text-muted">({{ eleve.eleve.matricule }})</small>{% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">Sélectionnez les enfants de ce parent. Vous pouvez en ajouter d'autres plus tard.</div>
+                            {% else %}
+                            <div class="text-muted small">Aucun élève actif trouvé. Inscrivez d'abord les élèves.</div>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
@@ -123,7 +154,8 @@ const roleSelectionne = "{{ role_selectionne }}";
 function toggleSubForm() {
     document.querySelectorAll('.sub-form').forEach(el => {
         el.classList.add('d-none');
-        el.querySelectorAll('input, select, textarea').forEach(f => f.disabled = true);
+        el.querySelectorAll('input:not([type=checkbox]), select, textarea').forEach(f => f.disabled = true);
+        el.querySelectorAll('input[type=checkbox]').forEach(f => { f.disabled = true; f.checked = false; });
     });
     const val = roleSelect.value;
     if (val) {

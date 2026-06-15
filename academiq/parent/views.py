@@ -1,11 +1,12 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
 from django.core.paginator import Paginator
 
 from core.permissions import role_required
 from core.models import (
     AnneeScolaire, LienParentEleve, Inscription, Note,
     Absence, Bulletin, Notification, ResultatMatiere, Cours, Personne,
-    EmploiDuTemps, Periode,
+    EmploiDuTemps, Periode, Message, FraisScolarite,
 )
 
 
@@ -173,6 +174,132 @@ def edt_enfant(request, eleve_id):
         'creneaux_par_jour': creneaux_par_jour,
         'jours_labels': JOURS_LABELS,
         'nb_notifs': nb_notifs,
+    })
+
+
+# ─── Scolarité / Paiements ───────────────────────────────────────────────────
+
+@role_required('PARENT')
+def mes_paiements(request):
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    nb_notifs = Notification.objects.filter(destinataire=request.user, lu=False).count()
+    liens = _get_enfants(request.user)
+
+    enfants_frais = []
+    for lien in liens:
+        try:
+            frais = FraisScolarite.objects.get(eleve=lien.eleve, annee=annee_active) if annee_active else None
+        except FraisScolarite.DoesNotExist:
+            frais = None
+        paiements = frais.paiements.order_by('-date_paiement') if frais else []
+        enfants_frais.append({'lien': lien, 'frais': frais, 'paiements': paiements})
+
+    return render(request, 'parent/paiements.html', {
+        'enfants_frais': enfants_frais,
+        'annee_active': annee_active,
+        'nb_notifs': nb_notifs,
+    })
+
+
+
+# ─── Annonces ────────────────────────────────────────────────────────────────
+
+@role_required('PARENT')
+def mes_annonces(request):
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    nb_notifs = Notification.objects.filter(destinataire=request.user, lu=False).count()
+    liens = _get_enfants(request.user)
+
+    # Collecter les classes de tous les enfants inscrits cette année
+    classes_enfants = []
+    for lien in liens:
+        insc = Inscription.objects.filter(
+            eleve=lien.eleve, annee=annee_active, statut='actif'
+        ).select_related('classe').first() if annee_active else None
+        if insc:
+            classes_enfants.append(insc.classe)
+
+    annonces = Notification.objects.filter(
+        type_notif='annonce',
+        classe__in=classes_enfants,
+    ).order_by('-date_envoi') if classes_enfants else Notification.objects.none()
+
+    return render(request, 'parent/annonces.html', {
+        'annonces': annonces,
+        'annee_active': annee_active,
+        'nb_notifs': nb_notifs,
+        'classes_enfants': classes_enfants,
+    })
+
+
+# ─── Messagerie ───────────────────────────────────────────────────────────────
+
+@role_required('PARENT')
+def messagerie(request):
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    nb_notifs = Notification.objects.filter(destinataire=request.user, lu=False).count()
+    recus   = Message.objects.filter(destinataire=request.user).order_by('-date_envoi')
+    envoyes = Message.objects.filter(expediteur=request.user).order_by('-date_envoi')
+    nb_non_lus = recus.filter(lu=False).count()
+    return render(request, 'parent/messagerie/liste.html', {
+        'recus': recus[:20], 'envoyes': envoyes[:20],
+        'nb_non_lus': nb_non_lus,
+        'annee_active': annee_active, 'nb_notifs': nb_notifs,
+    })
+
+
+@role_required('PARENT')
+def envoyer_message(request):
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    nb_notifs = Notification.objects.filter(destinataire=request.user, lu=False).count()
+    if request.method == 'POST':
+        dest_id = request.POST.get('destinataire')
+        sujet   = request.POST.get('sujet', '').strip()
+        corps   = request.POST.get('corps', '').strip()
+        if dest_id and sujet and corps:
+            try:
+                dest = Personne.objects.get(pk=dest_id, actif=True)
+                piece = request.FILES.get('piece_jointe')
+                if piece and not piece.name.lower().endswith('.pdf'):
+                    messages.error(request, "Seuls les fichiers PDF sont acceptés.")
+                    return redirect('parent:envoyer_message')
+                msg_obj = Message(expediteur=request.user, destinataire=dest, sujet=sujet, corps=corps)
+                if piece:
+                    msg_obj.piece_jointe = piece
+                msg_obj.save()
+                messages.success(request, f"Message envoyé à {dest.get_full_name()}.")
+            except Personne.DoesNotExist:
+                messages.error(request, "Destinataire introuvable.")
+        else:
+            messages.error(request, "Veuillez remplir tous les champs.")
+        return redirect('parent:messagerie')
+    destinataires = Personne.objects.filter(
+        actif=True, groups__name__in=['DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES', 'ENSEIGNANT']
+    ).exclude(pk=request.user.pk).distinct().order_by('nom')
+    return render(request, 'parent/messagerie/nouveau.html', {
+        'destinataires': destinataires,
+        'annee_active': annee_active, 'nb_notifs': nb_notifs,
+    })
+
+
+@role_required('PARENT')
+def lire_message(request, pk):
+    from django.db.models import Q
+    from django.core.exceptions import PermissionDenied
+    annee_active = AnneeScolaire.objects.filter(active=True).first()
+    nb_notifs = Notification.objects.filter(destinataire=request.user, lu=False).count()
+    msg = Message.objects.filter(
+        Q(destinataire=request.user) | Q(expediteur=request.user), pk=pk
+    ).first()
+    if not msg:
+        messages.error(request, "Ce message est introuvable ou ne vous appartient pas.")
+        return redirect('parent:messagerie')
+    if msg.destinataire == request.user and not msg.lu:
+        msg.lu = True
+        msg.save(update_fields=['lu'])
+    return render(request, 'parent/messagerie/detail.html', {
+        'msg': msg,
+        'annee_active': annee_active, 'nb_notifs': nb_notifs,
     })
 
 

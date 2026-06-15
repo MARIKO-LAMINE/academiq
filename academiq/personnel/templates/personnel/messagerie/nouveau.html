@@ -8,14 +8,20 @@
 {% include 'partials/messages.html' %}
 <div class="card border-0" style="max-width:640px">
     <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold small">Destinataire</label>
-                <select name="destinataire" class="form-select" required>
+                <input type="text" id="searchDest" class="form-control mb-2"
+                       placeholder="Rechercher par nom..." autocomplete="off">
+                <select name="destinataire" id="selectDest" class="form-select" required>
                     <option value="">— Choisir un destinataire —</option>
-                    {% for p in destinataires %}
-                    <option value="{{ p.pk }}">{{ p.get_full_name }} ({{ p.groups.all|join:", " }})</option>
+                    {% for categorie, membres in groupes_dest.items %}
+                    <optgroup label="{{ categorie }}">
+                        {% for p in membres %}
+                        <option value="{{ p.pk }}">{{ p.get_full_name }}</option>
+                        {% endfor %}
+                    </optgroup>
                     {% endfor %}
                 </select>
             </div>
@@ -27,6 +33,13 @@
                 <label class="form-label fw-semibold small">Message</label>
                 <textarea name="corps" class="form-control" rows="6" required></textarea>
             </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">
+                    <i class="bi bi-paperclip me-1"></i>Pièce jointe PDF <span class="text-muted fw-normal">(optionnel)</span>
+                </label>
+                <input type="file" name="piece_jointe" class="form-control" accept=".pdf">
+                <div class="form-text">Fichier PDF uniquement — taille max recommandée : 5 Mo</div>
+            </div>
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-send me-1"></i>Envoyer
@@ -36,4 +49,42 @@
         </form>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const DEST_DATA = [
+    {% for categorie, membres in groupes_dest.items %}{% for p in membres %}
+    {v:"{{ p.pk }}", t:"{{ p.get_full_name|escapejs }}", g:"{{ categorie }}"},
+    {% endfor %}{% endfor %}
+];
+
+function rebuildSelect(query) {
+    const sel = document.getElementById('selectDest');
+    const currentVal = sel.value;
+    const q = query.toLowerCase().trim();
+    sel.innerHTML = '<option value="">— Choisir un destinataire —</option>';
+    const groups = {};
+    DEST_DATA.forEach(d => {
+        if (!q || d.t.toLowerCase().includes(q)) {
+            if (!groups[d.g]) groups[d.g] = [];
+            groups[d.g].push(d);
+        }
+    });
+    Object.keys(groups).forEach(grp => {
+        const og = document.createElement('optgroup');
+        og.label = grp;
+        groups[grp].forEach(d => {
+            const o = document.createElement('option');
+            o.value = d.v; o.textContent = d.t;
+            if (d.v === currentVal) o.selected = true;
+            og.appendChild(o);
+        });
+        sel.appendChild(og);
+    });
+}
+
+document.getElementById('searchDest').addEventListener('input', function () {
+    rebuildSelect(this.value);
+});
+</script>
 {% endblock %}

@@ -20,11 +20,34 @@
             </a>
         </li>
         <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'mon_edt' %}active{% endif %}"
+               href="{% url 'enseignant:mon_edt' %}">
+                <i class="bi bi-calendar-week"></i> Mon emploi du temps
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'messagerie' in request.resolver_match.url_name or 'message' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'enseignant:messagerie' %}">
+                <i class="bi bi-envelope"></i> Messagerie
+                {% if nb_messages_non_lus %}<span class="badge bg-danger ms-1">{{ nb_messages_non_lus }}</span>{% endif %}
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'annonces' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:gestion_annonces' %}">
+                <i class="bi bi-megaphone"></i> Annonces
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'calendrier' %}active{% endif %}"
+               href="{% url 'enseignant:calendrier' %}">
+                <i class="bi bi-calendar3"></i> Calendrier scolaire
+            </a>
+        </li>
+        <li class="nav-item mb-1">
             <a class="nav-link {% if 'notification' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'enseignant:notifications' %}">
                 <i class="bi bi-bell"></i> Notifications
-                {% with nb=request.user.notifications.count %}
-                {% endwith %}
             </a>
         </li>
     </ul>

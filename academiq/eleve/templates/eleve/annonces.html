@@ -1,0 +1,35 @@
+{% extends 'base_eleve.html' %}
+{% block title %}Annonces — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-megaphone me-2 text-primary"></i>Annonces</h4>
+    {% if inscription %}
+    <span class="badge bg-secondary">{{ inscription.classe.nom }}</span>
+    {% endif %}
+</div>
+
+{% if not inscription %}
+<div class="alert alert-warning">Vous n'êtes pas inscrit(e) dans une classe cette année.</div>
+{% elif not annonces %}
+<div class="card border-0 text-center py-5">
+    <div class="text-muted">
+        <i class="bi bi-megaphone fs-1 d-block mb-3 opacity-25"></i>
+        Aucune annonce pour votre classe.
+    </div>
+</div>
+{% else %}
+<div class="d-flex flex-column gap-3">
+    {% for a in annonces %}
+    <div class="card border-start border-primary border-4 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-primary">Annonce</span>
+                <small class="text-muted">{{ a.date_envoi|date:"d/m/Y à H:i" }}</small>
+            </div>
+            <p class="mb-0">{{ a.message }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -34,6 +34,31 @@
         </li>
         {% endfor %}
         <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'mes_paiements' %}active{% endif %}"
+               href="{% url 'parent:mes_paiements' %}">
+                <i class="bi bi-cash-coin"></i> Scolarité
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'annonces' %}active{% endif %}"
+               href="{% url 'parent:annonces' %}">
+                <i class="bi bi-megaphone"></i> Annonces
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'calendrier' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'personnel:calendrier_scolaire' %}">
+                <i class="bi bi-calendar3"></i> Calendrier scolaire
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if 'messagerie' in request.resolver_match.url_name or 'message' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'parent:messagerie' %}">
+                <i class="bi bi-envelope"></i> Messagerie
+                {% if nb_messages_non_lus %}<span class="badge bg-danger ms-1">{{ nb_messages_non_lus }}</span>{% endif %}
+            </a>
+        </li>
+        <li class="nav-item mb-1">
             <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}"
                href="{% url 'parent:notifications' %}">
                 <i class="bi bi-bell"></i> Notifications

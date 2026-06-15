@@ -1,6 +1,22 @@
 from functools import wraps
 from django.shortcuts import redirect
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+
+def _redirect_to_dashboard(request):
+    """Redirige l'utilisateur vers son propre tableau de bord selon son rôle."""
+    messages.error(request, "Vous n'avez pas accès à cette page.")
+    groups = list(request.user.groups.values_list('name', flat=True))
+    if any(g in groups for g in ('DIRECTION', 'ADMINISTRATION', 'SCOLARITE', 'FINANCES')):
+        return redirect('personnel:dashboard')
+    if 'ENSEIGNANT' in groups:
+        return redirect('enseignant:dashboard')
+    if 'ELEVE' in groups:
+        return redirect('eleve:dashboard')
+    if 'PARENT' in groups:
+        return redirect('parent:dashboard')
+    return redirect('accounts:login')
 
 
 def role_required(*roles):
@@ -19,7 +35,7 @@ def role_required(*roles):
             user_groups = request.user.groups.values_list('name', flat=True)
             if any(r in user_groups for r in roles):
                 return view_func(request, *args, **kwargs)
-            return redirect('accounts:acces_refuse')
+            return _redirect_to_dashboard(request)
         return wrapper
     return decorator
 
@@ -39,5 +55,5 @@ class RoleRequiredMixin(LoginRequiredMixin):
             return redirect('accounts:login')
         user_groups = request.user.groups.values_list('name', flat=True)
         if not any(r in user_groups for r in self.roles_requis):
-            return redirect('accounts:acces_refuse')
+            return _redirect_to_dashboard(request)
         return super().dispatch(request, *args, **kwargs)

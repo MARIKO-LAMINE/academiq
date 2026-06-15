@@ -3,9 +3,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="fw-bold mb-0"><i class="bi bi-megaphone me-2 text-warning"></i>Annonces aux classes</h4>
+    {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAnnonce">
         <i class="bi bi-plus-circle me-1"></i>Nouvelle annonce
     </button>
+    {% endif %}
 </div>
 {% include 'partials/messages.html' %}
 
@@ -32,6 +34,7 @@
     </div>
 </div>
 
+{% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
 <div class="modal fade" id="modalAnnonce" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -64,4 +67,5 @@
         </div>
     </div>
 </div>
+{% endif %}{# fin DIRECTION/ADMINISTRATION/SCOLARITE #}
 {% endblock %}

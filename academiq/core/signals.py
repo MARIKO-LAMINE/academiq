@@ -24,6 +24,17 @@ def recalculer_resultat_matiere(sender, instance, **kwargs):
         defaults={'moyenne': moyenne}
     )
 
+    # Recalcul du rang par matière pour tous les élèves du même cours/période
+    resultats_cours = list(
+        ResultatMatiere.objects.filter(
+            cours=instance.cours, periode=instance.periode
+        ).order_by('-moyenne')
+    )
+    for rang_mat, res in enumerate(resultats_cours, start=1):
+        res.rang = rang_mat
+    if resultats_cours:
+        ResultatMatiere.objects.bulk_update(resultats_cours, ['rang'])
+
     Notification.objects.create(
         message=f"Nouvelle note en {instance.cours.matiere.nom_matiere} : {instance.valeur}/20",
         type_notif='note_saisie',
@@ -102,6 +113,22 @@ def notifier_bulletin(sender, instance, created, **kwargs):
             type_notif='bulletin_disponible',
             destinataire=lien.parent,
         )
+
+
+@receiver(post_save, sender='core.EmploiDuTemps')
+def notifier_enseignant_edt(sender, instance, created, **kwargs):
+    """Notifie l'enseignant quand un créneau lui est attribué."""
+    if not created:
+        return
+    from .models import Notification
+    Notification.objects.create(
+        message=f"Nouveau créneau dans votre emploi du temps : "
+                f"{instance.cours.matiere.nom_matiere} — {instance.jour.capitalize()} "
+                f"{instance.heure_debut.strftime('%H:%M')}-{instance.heure_fin.strftime('%H:%M')} "
+                f"(salle {instance.salle.numero}).",
+        type_notif='edt_attribue',
+        destinataire=instance.cours.enseignant,
+    )
 
 
 @receiver(pre_save, sender='core.AnneeScolaire')

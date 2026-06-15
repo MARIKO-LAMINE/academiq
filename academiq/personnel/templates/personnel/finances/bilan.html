@@ -1,0 +1,187 @@
+{% extends 'base_personnel.html' %}
+{% block title %}Bilan financier — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">
+        <i class="bi bi-bar-chart-line me-2 text-success"></i>Bilan financier
+        {% if annee_active %}<small class="text-muted fs-6 fw-normal ms-2">{{ annee_active.libelle }}</small>{% endif %}
+    </h4>
+    {% if annee_active and 'FINANCES' in groupes_user or annee_active and 'DIRECTION' in groupes_user %}
+    <a href="{% url 'personnel:bilan_financier_pdf' %}" target="_blank" class="btn btn-danger btn-sm">
+        <i class="bi bi-file-pdf me-1"></i>Imprimer PDF
+    </a>
+    {% endif %}
+</div>
+
+{% if not annee_active %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Aucune année scolaire active.</div>
+{% else %}
+
+<!-- Résumé global -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8fdf0">
+                    <i class="bi bi-cash-stack fs-4 text-success"></i>
+                </div>
+                <div>
+                    <div class="fs-6 fw-bold">{{ total_du|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Total dû</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#e8f4fd">
+                    <i class="bi bi-check-circle fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <div class="fs-6 fw-bold text-success">{{ total_paye|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Total encaissé</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 bg-danger bg-opacity-10">
+                    <i class="bi bi-exclamation-circle fs-4 text-danger"></i>
+                </div>
+                <div>
+                    <div class="fs-6 fw-bold text-danger">{{ total_reste|floatformat:0 }} FCFA</div>
+                    <div class="text-muted small">Reste à percevoir</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3" style="background:#f0eeff">
+                    <i class="bi bi-percent fs-4 text-purple" style="color:#6f42c1"></i>
+                </div>
+                <div>
+                    <div class="fs-6 fw-bold" style="color:#6f42c1">{{ taux }}%</div>
+                    <div class="text-muted small">Taux de recouvrement</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barre de progression globale -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+            <span class="small fw-semibold">Progression globale des paiements</span>
+            <span class="small text-muted">{{ taux }}%</span>
+        </div>
+        <div class="progress" style="height:12px">
+            <div class="progress-bar bg-success" style="width:{{ taux }}%"></div>
+        </div>
+        <div class="d-flex gap-3 mt-2">
+            <span class="small"><span class="badge bg-success">{{ nb_paye }}</span> Payés</span>
+            <span class="small"><span class="badge bg-warning text-dark">{{ nb_partiel }}</span> Partiels</span>
+            <span class="small"><span class="badge bg-danger">{{ nb_attente }}</span> En attente</span>
+            <span class="small text-muted">sur {{ nb_total }} élèves</span>
+        </div>
+    </div>
+</div>
+
+<!-- Bilan par niveau -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-light fw-semibold">
+        <i class="bi bi-layers me-2 text-primary"></i>Bilan par niveau
+    </div>
+    <div class="card-body p-0">
+        {% if niveaux_bilan %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Niveau</th>
+                        <th>Élèves</th>
+                        <th>Total dû</th>
+                        <th>Encaissé</th>
+                        <th>Reste</th>
+                        <th>Taux</th>
+                        <th>Statuts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for n in niveaux_bilan %}
+                <tr>
+                    <td class="fw-semibold">{{ n.niveau }}</td>
+                    <td><span class="badge bg-secondary">{{ n.nb_eleves }}</span></td>
+                    <td>{{ n.total_du|floatformat:0 }} FCFA</td>
+                    <td class="text-success fw-semibold">{{ n.total_paye|floatformat:0 }} FCFA</td>
+                    <td class="{% if n.total_reste > 0 %}text-danger fw-semibold{% else %}text-success{% endif %}">
+                        {{ n.total_reste|floatformat:0 }} FCFA
+                    </td>
+                    <td style="min-width:120px">
+                        <div class="progress" style="height:8px">
+                            <div class="progress-bar {% if n.taux >= 80 %}bg-success{% elif n.taux >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                 style="width:{{ n.taux }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ n.taux }}%</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-success">{{ n.nb_paye }}</span>
+                        <span class="badge bg-warning text-dark">{{ n.nb_partiel }}</span>
+                        <span class="badge bg-danger">{{ n.nb_attente }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-layers fs-3 d-block mb-2 opacity-25"></i>
+            Aucune donnée disponible.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 30 derniers paiements -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-light fw-semibold">
+        <i class="bi bi-clock-history me-2 text-primary"></i>30 derniers paiements enregistrés
+    </div>
+    <div class="card-body p-0">
+        {% if paiements_recents %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Élève</th><th>Montant</th><th>Mode</th><th>N° Reçu</th><th>Saisi par</th></tr>
+                </thead>
+                <tbody>
+                {% for p in paiements_recents %}
+                <tr>
+                    <td class="text-muted small">{{ p.date_paiement|date:"d/m/Y" }}</td>
+                    <td class="fw-semibold">{{ p.frais.eleve.get_full_name }}</td>
+                    <td class="text-success fw-semibold">{{ p.montant|floatformat:0 }} FCFA</td>
+                    <td><span class="badge bg-light text-dark border">{{ p.get_mode_display }}</span></td>
+                    <td class="font-monospace small text-muted">{{ p.recu_numero|default:"—" }}</td>
+                    <td class="text-muted small">{{ p.saisi_par.get_full_name|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-cash fs-3 d-block mb-2 opacity-25"></i>
+            Aucun paiement enregistré pour cette année.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

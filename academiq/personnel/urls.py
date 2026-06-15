@@ -12,6 +12,7 @@ urlpatterns = [
     # Périodes
     path('periodes/', views.gestion_periodes, name='gestion_periodes'),
     path('periodes/<int:pk>/cloturer/', views.cloturer_periode, name='cloturer_periode'),
+    path('periodes/<int:pk>/modifier/', views.modifier_periode, name='modifier_periode'),
     # Salles
     path('salles/', views.gestion_salles, name='gestion_salles'),
     path('salles/<int:pk>/modifier/', views.modifier_salle, name='modifier_salle'),
@@ -22,6 +23,7 @@ urlpatterns = [
     # Classes
     path('classes/', views.gestion_classes, name='gestion_classes'),
     path('classes/<int:pk>/modifier/', views.modifier_classe, name='modifier_classe'),
+    path('classes/<int:pk>/supprimer/', views.supprimer_classe, name='supprimer_classe'),
     # Cours
     path('cours/', views.gestion_cours, name='gestion_cours'),
     path('cours/<int:pk>/modifier/', views.modifier_cours, name='modifier_cours'),
@@ -67,6 +69,8 @@ urlpatterns = [
     path('finances/creer/', views.creer_frais, name='creer_frais'),
     path('finances/<int:frais_id>/paiement/', views.enregistrer_paiement, name='enregistrer_paiement'),
     path('finances/paiement/<int:paiement_id>/recu/', views.recu_paiement_pdf, name='recu_paiement_pdf'),
+    path('finances/bilan/', views.bilan_financier, name='bilan_financier'),
+    path('finances/bilan/pdf/', views.bilan_financier_pdf, name='bilan_financier_pdf'),
     # Calendrier
     path('calendrier/', views.calendrier_scolaire, name='calendrier_scolaire'),
     path('calendrier/creer/', views.creer_evenement, name='creer_evenement'),

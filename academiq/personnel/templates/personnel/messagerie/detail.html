@@ -18,6 +18,13 @@
         </div>
     </div>
     <div class="card-body" style="white-space:pre-line">{{ msg.corps }}</div>
+    {% if msg.piece_jointe %}
+    <div class="card-footer bg-transparent border-top">
+        <a href="{{ msg.piece_jointe.url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-file-pdf me-1"></i>Télécharger la pièce jointe PDF
+        </a>
+    </div>
+    {% endif %}
     {% if msg.expediteur == request.user %}
     <div class="card-footer bg-transparent">
         <span class="small text-muted">

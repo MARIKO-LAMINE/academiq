@@ -671,6 +671,7 @@ class Notification(models.Model):
         ('depassement_absences', 'Dépassement seuil absences'),
         ('bulletin_disponible',  'Bulletin disponible'),
         ('annonce',              'Annonce générale'),
+        ('edt_attribue',         'Créneau EDT attribué'),
     ]
     destinataire = models.ForeignKey(
         Personne, on_delete=models.CASCADE, related_name='notifications',
@@ -715,6 +716,7 @@ class Message(models.Model):
     corps   = models.TextField()
     lu      = models.BooleanField(default=False)
     date_envoi = models.DateTimeField(auto_now_add=True)
+    piece_jointe = models.FileField(upload_to='messages/', null=True, blank=True)
 
     def __str__(self):
         return f"De {self.expediteur} à {self.destinataire} — {self.sujet}"
@@ -748,6 +750,23 @@ class EvenementScolaire(models.Model):
     class Meta:
         db_table = 'evenement_scolaire'
         ordering = ['date_debut']
+
+
+class TarifNiveau(models.Model):
+    """Prix de scolarité fixé par l'école pour un niveau donné et une année scolaire."""
+    annee   = models.ForeignKey('AnneeScolaire', on_delete=models.CASCADE, related_name='tarifs')
+    niveau  = models.CharField(max_length=50)
+    montant = models.DecimalField(max_digits=10, decimal_places=0)
+    date_echeance = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Tarif {self.niveau} — {self.annee} : {self.montant} FCFA"
+
+    class Meta:
+        db_table = 'tarif_niveau'
+        unique_together = [('annee', 'niveau')]
+        verbose_name = 'Tarif par niveau'
+        verbose_name_plural = 'Tarifs par niveau'
 
 
 class FraisScolarite(models.Model):

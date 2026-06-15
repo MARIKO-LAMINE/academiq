@@ -1,6 +1,11 @@
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Ajoute le répertoire des apps au Python path
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 SECRET_KEY = 'django-insecure-dq_#7#^r3f&1@@uaobg5=kdmcso1i-h!!7j!3gy2#gora-e6ja'
 

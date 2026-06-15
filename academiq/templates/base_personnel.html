@@ -15,15 +15,19 @@
                 <i class="bi bi-speedometer2"></i> Tableau de bord
             </a>
         </li>
-        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'FINANCES' in groupes_user %}
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Administration</div></li>
 
+        {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'annees' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_annees' %}">
                 <i class="bi bi-calendar3"></i> Années scolaires
             </a>
         </li>
+        {% endif %}
+
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'periodes' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_periodes' %}">
@@ -42,6 +46,7 @@
                 <i class="bi bi-building"></i> Salles
             </a>
         </li>
+        {% endif %}
 
         {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user or 'ADMINISTRATION' in groupes_user %}
         <li class="nav-item mb-1">
@@ -52,13 +57,16 @@
         </li>
         {% endif %}
 
-        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user %}
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'cours' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_cours' %}">
-                <i class="bi bi-book"></i> Cours
+                <i class="bi bi-book"></i> Cours{% if 'SCOLARITE' in groupes_user and 'DIRECTION' not in groupes_user and 'ADMINISTRATION' not in groupes_user %} <span class="text-white-50" style="font-size:.7rem">(lecture)</span>{% endif %}
             </a>
         </li>
+        {% endif %}
+
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'edt' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_edt' %}">
@@ -69,26 +77,30 @@
 
         {% endif %}
 
+        {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user or 'ADMINISTRATION' in groupes_user %}
         <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Scolarité</div></li>
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'inscriptions' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_inscriptions' %}">
-                <i class="bi bi-person-plus"></i> Inscriptions
+                <i class="bi bi-person-plus"></i> Inscriptions{% if 'ADMINISTRATION' in groupes_user and 'DIRECTION' not in groupes_user and 'SCOLARITE' not in groupes_user %} <span class="text-white-50" style="font-size:.7rem">(lecture)</span>{% endif %}
             </a>
         </li>
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'absences' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:validation_absences' %}">
-                <i class="bi bi-person-x"></i> Absences
+                <i class="bi bi-person-x"></i> Absences{% if 'ADMINISTRATION' in groupes_user and 'DIRECTION' not in groupes_user and 'SCOLARITE' not in groupes_user %} <span class="text-white-50" style="font-size:.7rem">(lecture)</span>{% endif %}
                 {% with nb=absences_attente %}{% if nb %}<span class="badge bg-danger ms-1">{{ nb }}</span>{% endif %}{% endwith %}
             </a>
         </li>
+        {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item mb-1">
             <a class="nav-link {% if 'bulletin' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_bulletins' %}">
                 <i class="bi bi-file-earmark-text"></i> Bulletins
             </a>
         </li>
+        {% endif %}
+        {% endif %}
 
         <!-- Messagerie & Annonces -->
         <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Communication</div></li>
@@ -103,16 +115,23 @@
             <a class="nav-link {% if 'annonces' in request.resolver_match.url_name %}active{% endif %}"
                href="{% url 'personnel:gestion_annonces' %}">
                 <i class="bi bi-megaphone"></i> Annonces
+                {% if 'FINANCES' in groupes_user and 'DIRECTION' not in groupes_user and 'ADMINISTRATION' not in groupes_user and 'SCOLARITE' not in groupes_user %}<span class="text-white-50" style="font-size:.7rem">(lecture)</span>{% endif %}
             </a>
         </li>
 
         <!-- Finances -->
-        {% if 'DIRECTION' in groupes_user or 'FINANCES' in groupes_user or 'SCOLARITE' in groupes_user %}
+        {% if 'DIRECTION' in groupes_user or 'FINANCES' in groupes_user %}
         <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Finances</div></li>
         <li class="nav-item mb-1">
-            <a class="nav-link {% if 'finances' in request.resolver_match.url_name %}active{% endif %}"
+            <a class="nav-link {% if request.resolver_match.url_name == 'gestion_finances' %}active{% endif %}"
                href="{% url 'personnel:gestion_finances' %}">
                 <i class="bi bi-cash-coin"></i> Frais de scolarité
+            </a>
+        </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'bilan_financier' %}active{% endif %}"
+               href="{% url 'personnel:bilan_financier' %}">
+                <i class="bi bi-bar-chart-line"></i> Bilan financier
             </a>
         </li>
         {% endif %}

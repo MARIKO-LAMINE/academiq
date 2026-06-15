@@ -85,8 +85,14 @@ class CoursForm(forms.ModelForm):
         # N'afficher que les personnes ayant le rôle enseignant
         self.fields['enseignant'].queryset = Personne.objects.filter(
             enseignant__isnull=False, actif=True
-        )
-        self.fields['enseignant'].label_from_instance = lambda obj: obj.get_full_name()
+        ).select_related('enseignant').order_by('nom', 'prenom')
+        def _ens_label(obj):
+            try:
+                spec = obj.enseignant.specialite
+            except Exception:
+                spec = ''
+            return f"{obj.get_full_name()} ({spec})" if spec else obj.get_full_name()
+        self.fields['enseignant'].label_from_instance = _ens_label
 
 
 class PersonneBaseForm(forms.ModelForm):
@@ -142,11 +148,16 @@ class EnseignantSubForm(forms.ModelForm):
 class EleveSubForm(forms.ModelForm):
     class Meta:
         model = Eleve
-        fields = ['date_naissance', 'lieu_naissance']
+        fields = ['matricule', 'date_naissance', 'lieu_naissance']
         widgets = {
+            'matricule':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ELV-2025-001'}),
             'date_naissance': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'lieu_naissance': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['matricule'].required = True
 
 
 class ParentSubForm(forms.ModelForm):
@@ -190,7 +201,9 @@ class InscriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['eleve'].queryset = Personne.objects.filter(eleve__isnull=False, actif=True)
-        self.fields['eleve'].label_from_instance = lambda obj: obj.get_full_name()
+        self.fields['eleve'].label_from_instance = lambda obj: (
+            f"{obj.get_full_name()} — {obj.eleve.matricule}" if obj.eleve.matricule else obj.get_full_name()
+        )
 
 
 class EmploiDuTempsForm(forms.ModelForm):

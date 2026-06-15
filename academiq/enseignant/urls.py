@@ -13,4 +13,9 @@ urlpatterns = [
     path('cours/<int:cours_id>/absences/ajouter/', views.saisir_absence, name='saisir_absence'),
     path('cours/<int:cours_id>/eleve/<int:eleve_id>/notes/', views.notes_eleve, name='notes_eleve'),
     path('notifications/', views.mes_notifications, name='notifications'),
+    path('edt/', views.mon_edt, name='mon_edt'),
+    path('messages/', views.messagerie, name='messagerie'),
+    path('messages/nouveau/', views.envoyer_message, name='envoyer_message'),
+    path('messages/<int:pk>/', views.lire_message, name='lire_message'),
+    path('calendrier/', views.mon_calendrier, name='calendrier'),
 ]

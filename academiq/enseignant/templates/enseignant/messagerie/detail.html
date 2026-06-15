@@ -1,0 +1,25 @@
+{% extends 'base_enseignant.html' %}{% block content %}
+<div class="row justify-content-center"><div class="col-md-8">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">{{ msg.sujet }}</h5>
+        <a href="{% url 'enseignant:messagerie' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="small text-muted">
+                <strong>De :</strong> {{ msg.expediteur.get_full_name }} &nbsp;|&nbsp;
+                <strong>À :</strong> {{ msg.destinataire.get_full_name }} &nbsp;|&nbsp;
+                <strong>Date :</strong> {{ msg.date_envoi|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+        <div class="card-body">{{ msg.corps|linebreaksbr }}</div>
+        {% if msg.piece_jointe %}
+        <div class="card-footer bg-transparent border-top">
+            <a href="{{ msg.piece_jointe.url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-pdf me-1"></i>Télécharger la pièce jointe PDF
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div></div>
+{% endblock %}
