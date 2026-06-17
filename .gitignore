@@ -15,10 +15,12 @@ __pycache__/
 local_settings.py
 db.sqlite3
 media/
+staticfiles/
 
 # Variables d'environnement
 .env
 .env.*
+!.env.example
 
 # Fichiers système
 .DS_Store

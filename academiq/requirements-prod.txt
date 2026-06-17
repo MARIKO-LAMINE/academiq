@@ -1,0 +1,27 @@
+# ============================================================
+# ACADEMIQ — Dépendances de PRODUCTION (O2Switch / Python 3.12)
+# Installation :  pip install -r requirements-prod.txt
+# Aucune compilation requise (PyMySQL et WhiteNoise sont en pur Python).
+# ============================================================
+
+# Framework (version alignée sur l'environnement de développement)
+Django>=6.0,<6.1
+
+# Connecteur MySQL/MariaDB (pur Python, pas de compilation)
+PyMySQL>=1.1.0
+
+# Images (photos de profil)
+Pillow>=10.0.0
+
+# Export PDF des bulletins
+reportlab>=4.0.0
+
+# Variables d'environnement (.env)
+python-dotenv>=1.0.0
+
+# Formulaires Bootstrap 5
+django-crispy-forms>=2.0
+crispy-bootstrap5>=0.7
+
+# Service des fichiers statiques en production
+whitenoise>=6.6.0
