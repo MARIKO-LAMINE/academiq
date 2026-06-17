@@ -77,8 +77,11 @@ def dashboard(request):
     if request.user.is_superuser:
         return redirect('/admin/')
 
+    # Compte sans rôle : on déconnecte pour éviter une boucle de redirection.
+    # (Sinon : dashboard → login → accueil → (authentifié) → dashboard → ... à l'infini.)
+    logout(request)
     messages.warning(request, "Votre compte n'est associé à aucun rôle. Contactez l'administration.")
-    return redirect('accounts:login')
+    return redirect('accounts:accueil')
 
 
 def acces_refuse(request):
