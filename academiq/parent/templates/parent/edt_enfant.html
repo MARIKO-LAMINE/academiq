@@ -59,7 +59,6 @@
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header fw-semibold py-2" style="background:var(--bs-primary);color:#fff">
         <i class="bi bi-calendar-day me-2"></i>
-        {{ jours_labels|default_if_none:""|stringformat:"s" }}
         {% if jour == 'lundi' %}Lundi
         {% elif jour == 'mardi' %}Mardi
         {% elif jour == 'mercredi' %}Mercredi
