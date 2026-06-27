@@ -1,8 +1,8 @@
 {% extends 'base_enseignant.html' %}
-{% block title %}Mes cours ACADEMIQ{% endblock %}
+{% block title %}Mes salles ACADEMIQ{% endblock %}
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
-    <h4 class="fw-bold mb-0"><i class="bi bi-book me-2 text-primary"></i>Mes cours{% if annee_active %} <small class="text-muted fs-6">{{ annee_active.libelle }}</small>{% endif %}</h4>
+    <h4 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>Mes salles{% if annee_active %} <small class="text-muted fs-6">{{ annee_active.libelle }}</small>{% endif %}</h4>
 </div>
 {% if cours_list %}
 <div class="row g-3">

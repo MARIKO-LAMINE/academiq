@@ -330,10 +330,14 @@ def supprimer_cours(request, pk):
 
 @role_required('DIRECTION')
 def gestion_comptes(request):
+    from django.db.models import Q
+    q = (request.GET.get('q') or '').strip()
     qs = Personne.objects.prefetch_related('groups').order_by('nom', 'prenom')
+    if q:
+        qs = qs.filter(Q(nom__icontains=q) | Q(prenom__icontains=q) | Q(email__icontains=q))
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
-    return render(request, 'personnel/comptes/liste.html', {'page_obj': page_obj})
+    return render(request, 'personnel/comptes/liste.html', {'page_obj': page_obj, 'q': q})
 
 
 @role_required('DIRECTION')

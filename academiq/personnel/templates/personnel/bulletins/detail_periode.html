@@ -17,6 +17,10 @@
     </div>
 </div>
 {% include 'partials/messages.html' %}
+<div class="input-group mb-3" style="max-width:380px">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input type="text" class="form-control" placeholder="Rechercher un élève…" data-search="#liste-bulletins">
+</div>
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -26,9 +30,9 @@
                         <th>Rang</th><th>Élève</th><th>Moyenne</th><th>Effectif</th><th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="liste-bulletins">
                 {% for b in bulletins %}
-                <tr>
+                <tr data-search-item data-search-text="{{ b.eleve.get_full_name }}">
                     <td><strong>{{ b.rang }}</strong></td>
                     <td>{{ b.eleve.get_full_name }}</td>
                     <td>
