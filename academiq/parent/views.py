@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 
 from core.permissions import role_required
+from core.edt_utils import construire_grille
 from core.models import (
     AnneeScolaire, LienParentEleve, Inscription, Note,
     Absence, Bulletin, Notification, ResultatMatiere, Cours, Personne,
@@ -146,6 +147,7 @@ def edt_enfant(request, eleve_id):
     periode_id = request.GET.get('periode')
     periode_sel = None
     creneaux_par_jour = {}
+    grille = None
 
     if inscription and annee_active:
         if periode_id:
@@ -164,6 +166,7 @@ def edt_enfant(request, eleve_id):
                 slots = [c for c in creneaux if c.jour == jour]
                 if slots:
                     creneaux_par_jour[jour] = slots
+            grille = construire_grille(creneaux)
 
     return render(request, 'parent/edt_enfant.html', {
         'enfant': enfant,
@@ -173,6 +176,8 @@ def edt_enfant(request, eleve_id):
         'periode_sel': periode_sel,
         'creneaux_par_jour': creneaux_par_jour,
         'jours_labels': JOURS_LABELS,
+        'grille': grille,
+        'edt_mode': 'classe',
         'nb_notifs': nb_notifs,
     })
 

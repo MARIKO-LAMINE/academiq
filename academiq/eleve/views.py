@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 
 from core.permissions import role_required
+from core.edt_utils import construire_grille
 from core.models import (
     AnneeScolaire, Inscription, Note, Absence,
     Bulletin, Notification, ResultatMatiere, Cours,
@@ -167,6 +168,7 @@ def mon_edt(request):
     periode_id = request.GET.get('periode')
     periode_sel = None
     creneaux_par_jour = {}
+    grille = None
 
     if ctx['inscription'] and annee_active:
         if periode_id:
@@ -183,12 +185,15 @@ def mon_edt(request):
                 slots = [c for c in creneaux if c.jour == jour]
                 if slots:
                     creneaux_par_jour[jour] = slots
+            grille = construire_grille(creneaux)
 
     ctx.update({
         'periodes': periodes,
         'periode_sel': periode_sel,
         'creneaux_par_jour': creneaux_par_jour,
         'jours_labels': JOURS_LABELS,
+        'grille': grille,
+        'edt_mode': 'classe',
     })
     return render(request, 'eleve/edt.html', ctx)
 

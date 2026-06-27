@@ -1,0 +1,70 @@
+{% comment %}
+Grille hebdomadaire d'emploi du temps.
+Contexte attendu :
+  grille            : dict {'jours': [(code, label)], 'lignes': [{heure_debut, heure_fin, cellules}]}
+  edt_mode          : 'enseignant' | 'classe' | 'enseignant_admin' | 'classe_admin'
+  edt_peut_supprimer: (optionnel) bool — affiche un bouton supprimer par case (mode classe_admin)
+  edt_next          : (optionnel) querystring de redirection après suppression
+{% endcomment %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0 text-center edt-grille">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:110px" class="text-nowrap">
+                            <i class="bi bi-clock me-1"></i>Horaire
+                        </th>
+                        {% for code, label in grille.jours %}
+                        <th>{{ label }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in grille.lignes %}
+                    <tr>
+                        <td class="fw-semibold text-nowrap bg-light small">
+                            {{ ligne.heure_debut|time:"H:i" }}<br>{{ ligne.heure_fin|time:"H:i" }}
+                        </td>
+                        {% for c in ligne.cellules %}
+                        {% if c %}
+                        <td class="edt-case text-start">
+                            {% if edt_mode == 'enseignant' %}
+                            <div class="fw-semibold small">{{ c.cours.classe.nom }}</div>
+                            <span class="badge bg-secondary mt-1"><i class="bi bi-building me-1"></i>{{ c.salle.numero }}</span>
+                            {% elif edt_mode == 'enseignant_admin' %}
+                            <div class="fw-semibold small">{{ c.cours.matiere.nom_matiere }}</div>
+                            <span class="badge bg-primary-subtle text-primary-emphasis"><i class="bi bi-people me-1"></i>{{ c.cours.classe.nom }}</span>
+                            <span class="badge bg-secondary mt-1"><i class="bi bi-building me-1"></i>{{ c.salle.numero }}</span>
+                            {% else %}
+                            <div class="fw-semibold small">{{ c.cours.matiere.nom_matiere }}</div>
+                            <div class="text-muted" style="font-size:.72rem"><i class="bi bi-person me-1"></i>{{ c.cours.enseignant.get_full_name }}</div>
+                            <span class="badge bg-secondary mt-1"><i class="bi bi-building me-1"></i>{{ c.salle.numero }}</span>
+                            {% endif %}
+                            {% if edt_peut_supprimer %}
+                            <form method="post" action="{% url 'personnel:supprimer_creneau' c.pk %}"
+                                  onsubmit="return confirm('Supprimer ce créneau ?')" class="mt-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ edt_next }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                        {% else %}
+                        <td class="bg-body-tertiary"></td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<style>
+    .edt-grille td.edt-case { background:#fff; vertical-align:top; min-width:130px; }
+    .edt-grille thead th { background:var(--aq-primary); color:#fff; }
+    .edt-grille td.bg-light { background:#f8f9fa !important; }
+</style>

@@ -23,11 +23,11 @@
                         <i class="bi bi-eye me-1"></i>Liste des eleves et notes
                     </a>
                     <div class="d-flex gap-2">
-                        <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-outline-success flex-fill">
-                            <i class="bi bi-pencil-square me-1"></i>Saisir note
+                        <a href="{% url 'enseignant:saisie_notes' cours.pk %}" class="btn btn-sm btn-outline-success flex-fill">
+                            <i class="bi bi-pencil-square me-1"></i>Saisir notes
                         </a>
-                        <a href="{% url 'enseignant:saisir_absence' cours.pk %}" class="btn btn-sm btn-outline-warning flex-fill">
-                            <i class="bi bi-person-x me-1"></i>Absence
+                        <a href="{% url 'enseignant:faire_appel' cours.pk %}" class="btn btn-sm btn-outline-warning flex-fill">
+                            <i class="bi bi-clipboard-check me-1"></i>Appel
                         </a>
                     </div>
                 </div>

@@ -16,6 +16,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 from core.permissions import role_required
+from core.edt_utils import construire_grille
 from core.models import (
     AnneeScolaire, Periode, Salle, Matiere, Classe, Cours,
     Personne, Personnel, Enseignant, Eleve, Parent, Inscription,
@@ -928,6 +929,8 @@ def gestion_edt(request):
                 for err in errs:
                     messages.error(request, f"{field} : {err}")
 
+    grille = None
+    edt_mode = None
     if enseignant_sel:
         # Vue DIRECTION : créneaux de l'enseignant sur toutes les classes
         qs = EmploiDuTemps.objects.filter(
@@ -936,14 +939,24 @@ def gestion_edt(request):
         if periode_sel:
             qs = qs.filter(periode=periode_sel)
         creneaux = qs.order_by('jour', 'heure_debut')
+        grille = construire_grille(creneaux)
+        edt_mode = 'enseignant_admin'
     elif classe_sel and periode_sel:
         creneaux = EmploiDuTemps.objects.filter(
             cours__classe=classe_sel, periode=periode_sel
         ).select_related('cours__matiere', 'cours__enseignant', 'salle').order_by(
             'jour', 'heure_debut'
         )
+        grille = construire_grille(creneaux)
+        edt_mode = 'classe_admin'
+
+    peut_modifier = 'DIRECTION' in groupes or 'ADMINISTRATION' in groupes
 
     return render(request, 'personnel/edt/liste.html', {
+        'grille': grille,
+        'edt_mode': edt_mode,
+        'edt_peut_supprimer': edt_mode == 'classe_admin' and peut_modifier,
+        'edt_next': f"?classe={classe_id or ''}&periode={periode_id or ''}",
         'annee_active': annee_active,
         'classes': classes,
         'periodes': periodes,

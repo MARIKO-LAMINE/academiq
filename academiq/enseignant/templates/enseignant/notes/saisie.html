@@ -1,0 +1,136 @@
+{% extends 'base_enseignant.html' %}
+{% block title %}Saisir les notes — ACADEMIQ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'enseignant:detail_cours' cours.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-pencil-square me-2 text-success"></i>Saisir les notes</h4>
+        <small class="text-muted">{{ cours.matiere.nom_matiere }} &mdash; {{ cours.classe.nom }}</small>
+    </div>
+</div>
+
+<!-- Étape 1 : choisir UNE fois la période et le type d'évaluation -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small">Période</label>
+                <select name="periode" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Choisir une période --</option>
+                    {% for p in periodes %}
+                    <option value="{{ p.pk }}" {% if periode_sel and periode_sel.pk == p.pk %}selected{% endif %}>{{ p.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small">Type d'évaluation</label>
+                <select name="type_eval" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Choisir un type --</option>
+                    {% for code, label in types_eval %}
+                    <option value="{{ code }}" {% if type_eval_sel == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if not pret %}
+<div class="alert alert-info border-0">
+    <i class="bi bi-info-circle me-2"></i>Choisissez une <strong>période</strong> et un <strong>type d'évaluation</strong> pour afficher la liste des élèves.
+</div>
+{% elif not eleves %}
+<div class="card border-0"><div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>Aucun élève inscrit dans cette classe.
+</div></div>
+{% else %}
+
+<!-- Étape 2 : attribuer les notes -->
+<form method="post">{% csrf_token %}
+    <input type="hidden" name="periode" value="{{ periode_sel.pk }}">
+    <input type="hidden" name="type_eval" value="{{ type_eval_sel }}">
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="bi bi-people me-2"></i>{{ eleves|length }} élève(s)</span>
+            <div class="input-group input-group-sm" style="max-width:280px">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Rechercher un élève…" data-search="#liste-notes">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th style="width:90px" class="text-center">Statut</th><th>Élève</th><th style="width:160px">Note / 20</th></tr>
+                    </thead>
+                    <tbody id="liste-notes">
+                        {% for item in eleves %}
+                        <tr data-search-item data-search-text="{{ item.eleve.get_full_name }}">
+                            <td class="text-center">
+                                <span class="badge rounded-pill statut-badge bg-light text-muted border"><i class="bi bi-dash"></i></span>
+                            </td>
+                            <td class="fw-semibold">{{ item.eleve.get_full_name }}</td>
+                            <td>
+                                <input type="number" name="note_{{ item.eleve.pk }}" value="{{ item.valeur }}"
+                                       min="0" max="20" step="0.25" inputmode="decimal"
+                                       class="form-control form-control-sm note-input" placeholder="—">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div id="liste-notes-vide" class="text-center text-muted py-4" style="display:none">
+                    <i class="bi bi-search me-1"></i>Aucun élève ne correspond à la recherche.
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Enregistrer toutes les notes</button>
+            <a href="{% url 'enseignant:detail_cours' cours.pk %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('.note-input'));
+
+    function majStatut(input) {
+        var badge = input.closest('tr').querySelector('.statut-badge');
+        var v = input.value.trim();
+        var ok = v !== '' && !isNaN(parseFloat(v)) && parseFloat(v) >= 0 && parseFloat(v) <= 20;
+        if (ok) {
+            badge.className = 'badge rounded-pill statut-badge bg-success';
+            badge.innerHTML = '<i class="bi bi-check-lg"></i>';
+        } else {
+            badge.className = 'badge rounded-pill statut-badge bg-light text-muted border';
+            badge.innerHTML = '<i class="bi bi-dash"></i>';
+        }
+    }
+
+    function inputsVisibles() {
+        return inputs.filter(function (i) { return i.closest('tr').style.display !== 'none'; });
+    }
+
+    function suivant(input) {
+        var vis = inputsVisibles();
+        var idx = vis.indexOf(input);
+        if (idx > -1 && idx + 1 < vis.length) { vis[idx + 1].focus(); vis[idx + 1].select(); }
+        else { input.blur(); }
+    }
+
+    inputs.forEach(function (input) {
+        majStatut(input); // état initial (notes déjà saisies → vert)
+        input.addEventListener('input', function () { majStatut(input); });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); majStatut(input); suivant(input); }
+        });
+        input.addEventListener('change', function () { majStatut(input); });
+    });
+})();
+</script>
+{% endblock %}

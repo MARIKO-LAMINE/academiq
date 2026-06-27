@@ -54,58 +54,8 @@
 </div>
 {% else %}
 
-<!-- Grille par jour -->
-{% for jour, creneaux in creneaux_par_jour.items %}
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header fw-semibold py-2" style="background:var(--bs-primary);color:#fff">
-        <i class="bi bi-calendar-day me-2"></i>
-        {% if jour == 'lundi' %}Lundi
-        {% elif jour == 'mardi' %}Mardi
-        {% elif jour == 'mercredi' %}Mercredi
-        {% elif jour == 'jeudi' %}Jeudi
-        {% elif jour == 'vendredi' %}Vendredi
-        {% elif jour == 'samedi' %}Samedi
-        {% endif %}
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:130px">Horaire</th>
-                        <th>Matière</th>
-                        <th>Enseignant</th>
-                        <th>Salle</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in creneaux %}
-                    <tr>
-                        <td class="fw-bold text-nowrap">
-                            <i class="bi bi-clock me-1 text-muted"></i>
-                            {{ c.heure_debut|time:"H:i" }} – {{ c.heure_fin|time:"H:i" }}
-                        </td>
-                        <td>
-                            <span class="fw-semibold">{{ c.cours.matiere.nom_matiere }}</span>
-                            <small class="text-muted d-block">coeff. {{ c.cours.matiere.coefficient }}</small>
-                        </td>
-                        <td>
-                            <i class="bi bi-person me-1 text-muted"></i>
-                            {{ c.cours.enseignant.get_full_name }}
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">
-                                <i class="bi bi-building me-1"></i>{{ c.salle.numero }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endfor %}
+<!-- Grille hebdomadaire -->
+{% include 'partials/edt_grille.html' %}
 
 <!-- Résumé -->
 <div class="card border-0 bg-light mt-4">

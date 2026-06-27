@@ -8,6 +8,7 @@ from core.models import (
     ResultatMatiere, Notification, EmploiDuTemps, Periode,
     Message, Personne, EvenementScolaire,
 )
+from core.edt_utils import construire_grille
 from .forms import NoteForm, AbsenceForm
 
 
@@ -123,6 +124,83 @@ def saisir_note(request, cours_id):
     })
 
 
+# ─── Saisie des notes en liste (toute la classe) ─────────────────────────────
+
+@role_required('ENSEIGNANT')
+def saisie_notes(request, cours_id):
+    """Saisie groupée : l'enseignant choisit UNE fois la période et le type
+    d'évaluation, puis la liste des élèves apparaît pour attribuer les notes."""
+    from datetime import date
+    from decimal import Decimal, InvalidOperation
+    cours = get_object_or_404(Cours, pk=cours_id, enseignant=request.user)
+
+    periodes = Periode.objects.filter(annee=cours.annee).order_by('date_debut')
+    types_eval = Note.TYPES_EVAL
+
+    periode_id = request.GET.get('periode') or request.POST.get('periode')
+    type_eval  = request.GET.get('type_eval') or request.POST.get('type_eval')
+
+    periode_sel = periodes.filter(pk=periode_id).first() if periode_id else None
+    type_valide = any(type_eval == t[0] for t in types_eval)
+
+    inscriptions = Inscription.objects.filter(
+        classe=cours.classe, annee=cours.annee, statut='actif'
+    ).select_related('eleve').order_by('eleve__nom', 'eleve__prenom')
+
+    if request.method == 'POST':
+        if not periode_sel or not type_valide:
+            messages.error(request, "Veuillez choisir une période et un type d'évaluation.")
+        elif periode_sel.cloturee or periode_sel.date_fin < date.today():
+            messages.error(request, f"La période '{periode_sel.nom}' est clôturée. Saisie impossible.")
+        else:
+            nb_ok, erreurs = 0, []
+            for insc in inscriptions:
+                brut = (request.POST.get(f"note_{insc.eleve_id}") or '').strip().replace(',', '.')
+                if not brut:
+                    continue
+                try:
+                    valeur = Decimal(brut)
+                except InvalidOperation:
+                    erreurs.append(insc.eleve.get_full_name())
+                    continue
+                if valeur < 0 or valeur > 20:
+                    erreurs.append(insc.eleve.get_full_name())
+                    continue
+                Note.objects.update_or_create(
+                    cours=cours, eleve=insc.eleve,
+                    periode=periode_sel, type_eval=type_eval,
+                    defaults={'valeur': valeur},
+                )
+                nb_ok += 1
+            if nb_ok:
+                messages.success(request, f"{nb_ok} note(s) enregistrée(s).")
+            if erreurs:
+                messages.error(request, "Notes ignorées (valeur invalide) : " + ", ".join(erreurs))
+            from django.urls import reverse
+            return redirect(f"{reverse('enseignant:saisie_notes', args=[cours.pk])}?periode={periode_sel.pk}&type_eval={type_eval}")
+
+    # Pré-remplissage des notes déjà saisies pour ce couple (période, type)
+    notes_existantes = {}
+    if periode_sel and type_valide:
+        for n in Note.objects.filter(cours=cours, periode=periode_sel, type_eval=type_eval):
+            notes_existantes[n.eleve_id] = n.valeur
+
+    eleves = [{
+        'eleve': insc.eleve,
+        'valeur': notes_existantes.get(insc.eleve_id, ''),
+    } for insc in inscriptions]
+
+    return render(request, 'enseignant/notes/saisie.html', {
+        'cours': cours,
+        'periodes': periodes,
+        'types_eval': types_eval,
+        'periode_sel': periode_sel,
+        'type_eval_sel': type_eval if type_valide else None,
+        'eleves': eleves,
+        'pret': bool(periode_sel and type_valide),
+    })
+
+
 # ─── Modifier une note ────────────────────────────────────────────────────────
 
 @role_required('ENSEIGNANT')
@@ -162,6 +240,82 @@ def saisir_absence(request, cours_id):
     return render(request, 'enseignant/absences/form.html', {
         'form': form,
         'cours': cours,
+    })
+
+
+# ─── Faire l'appel (feuille de présence) ─────────────────────────────────────
+
+@role_required('ENSEIGNANT')
+def faire_appel(request, cours_id):
+    """L'enseignant choisit la période (et la date, par défaut aujourd'hui) ;
+    la liste de la classe s'affiche avec présent / absent par élève."""
+    from datetime import date as date_cls, datetime
+    cours = get_object_or_404(Cours, pk=cours_id, enseignant=request.user)
+
+    periodes = Periode.objects.filter(annee=cours.annee).order_by('date_debut')
+    periode_id = request.GET.get('periode') or request.POST.get('periode')
+    periode_sel = periodes.filter(pk=periode_id).first() if periode_id else None
+
+    date_str = request.GET.get('date') or request.POST.get('date')
+    try:
+        date_appel = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date_cls.today()
+    except ValueError:
+        date_appel = date_cls.today()
+
+    inscriptions = Inscription.objects.filter(
+        classe=cours.classe, annee=cours.annee, statut='actif'
+    ).select_related('eleve').order_by('eleve__nom', 'eleve__prenom')
+
+    if request.method == 'POST':
+        if not periode_sel:
+            messages.error(request, "Veuillez choisir une période.")
+        else:
+            nb_abs, nb_present = 0, 0
+            for insc in inscriptions:
+                statut = request.POST.get(f"presence_{insc.eleve_id}", 'present')
+                existante = Absence.objects.filter(
+                    cours=cours, eleve=insc.eleve, periode=periode_sel, date_absence=date_appel,
+                )
+                if statut == 'absent':
+                    if not existante.exists():
+                        Absence.objects.create(
+                            cours=cours, eleve=insc.eleve, periode=periode_sel,
+                            date_absence=date_appel, nb_heures=1, statut='non_justifiee',
+                        )
+                    nb_abs += 1
+                else:
+                    # Présent : on retire une éventuelle absence saisie par erreur ce jour-là
+                    existante.delete()
+                    nb_present += 1
+            messages.success(
+                request,
+                f"Appel enregistré ({date_appel:%d/%m/%Y}) : {nb_present} présent(s), {nb_abs} absent(s).",
+            )
+            from django.urls import reverse
+            return redirect(
+                f"{reverse('enseignant:faire_appel', args=[cours.pk])}"
+                f"?periode={periode_sel.pk}&date={date_appel:%Y-%m-%d}"
+            )
+
+    # Pré-remplissage : élèves déjà marqués absents ce jour-là
+    absents_ids = set()
+    if periode_sel:
+        absents_ids = set(Absence.objects.filter(
+            cours=cours, periode=periode_sel, date_absence=date_appel,
+        ).values_list('eleve_id', flat=True))
+
+    eleves = [{
+        'eleve': insc.eleve,
+        'absent': insc.eleve_id in absents_ids,
+    } for insc in inscriptions]
+
+    return render(request, 'enseignant/absences/appel.html', {
+        'cours': cours,
+        'periodes': periodes,
+        'periode_sel': periode_sel,
+        'date_appel': date_appel,
+        'eleves': eleves,
+        'pret': bool(periode_sel),
     })
 
 
@@ -215,6 +369,7 @@ def mon_edt(request):
     periode_id = request.GET.get('periode')
     periode_sel = None
     creneaux_par_jour = {}
+    grille = None
 
     if annee_active:
         if periode_id:
@@ -230,6 +385,7 @@ def mon_edt(request):
                 slots = [c for c in creneaux if c.jour == jour]
                 if slots:
                     creneaux_par_jour[jour] = slots
+            grille = construire_grille(creneaux)
 
     return render(request, 'enseignant/edt.html', {
         'annee_active': annee_active,
@@ -237,6 +393,8 @@ def mon_edt(request):
         'periode_sel': periode_sel,
         'creneaux_par_jour': creneaux_par_jour,
         'jours_labels': JOURS_LABELS,
+        'grille': grille,
+        'edt_mode': 'enseignant',
     })
 
 

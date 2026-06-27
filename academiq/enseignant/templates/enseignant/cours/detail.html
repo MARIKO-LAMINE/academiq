@@ -8,11 +8,11 @@
         <small class="text-muted">{{ cours.classe.nom }} &mdash; coeff. {{ cours.matiere.coefficient }}</small>
     </div>
     <div class="ms-auto d-flex gap-2">
-        <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-success">
-            <i class="bi bi-pencil-square me-1"></i>Saisir note
+        <a href="{% url 'enseignant:saisie_notes' cours.pk %}" class="btn btn-sm btn-success">
+            <i class="bi bi-pencil-square me-1"></i>Saisir notes
         </a>
-        <a href="{% url 'enseignant:saisir_absence' cours.pk %}" class="btn btn-sm btn-warning">
-            <i class="bi bi-person-x me-1"></i>Absence
+        <a href="{% url 'enseignant:faire_appel' cours.pk %}" class="btn btn-sm btn-warning">
+            <i class="bi bi-clipboard-check me-1"></i>Appel
         </a>
         <a href="{% url 'enseignant:absences_cours' cours.pk %}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-list me-1"></i>Absences
@@ -25,11 +25,16 @@
         <div class="card border-0">
             <div class="card-header bg-light fw-semibold">
                 <i class="bi bi-people me-2"></i>Eleves inscrits ({{ inscriptions|length }})
+                <div class="input-group input-group-sm mt-2">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Rechercher un eleve…" data-search="#liste-eleves">
+                </div>
             </div>
             <div class="card-body p-0">
-                <ul class="list-group list-group-flush">
+                <ul class="list-group list-group-flush" id="liste-eleves">
                     {% for i in inscriptions %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <li class="list-group-item d-flex justify-content-between align-items-center"
+                        data-search-item data-search-text="{{ i.eleve.get_full_name }}">
                         <span>{{ i.eleve.get_full_name }}</span>
                         <a href="{% url 'enseignant:notes_eleve' cours.pk i.eleve.pk %}" class="btn btn-xs btn-outline-primary btn-sm py-0">
                             <i class="bi bi-bar-chart"></i>
@@ -39,6 +44,7 @@
                     <li class="list-group-item text-muted text-center py-3">Aucun eleve inscrit.</li>
                     {% endfor %}
                 </ul>
+                <div id="liste-eleves-vide" class="text-muted text-center py-3" style="display:none">Aucun eleve trouve.</div>
             </div>
         </div>
     </div>
@@ -47,7 +53,7 @@
         <div class="card border-0">
             <div class="card-header bg-light fw-semibold d-flex justify-content-between">
                 <span><i class="bi bi-pencil-square me-2"></i>Dernieres notes</span>
-                <a href="{% url 'enseignant:saisir_note' cours.pk %}" class="btn btn-sm btn-success py-0">
+                <a href="{% url 'enseignant:saisie_notes' cours.pk %}" class="btn btn-sm btn-success py-0">
                     <i class="bi bi-plus"></i>
                 </a>
             </div>
