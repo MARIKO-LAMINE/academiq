@@ -879,6 +879,109 @@ JOURS_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
 
 
 @role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
+def statistiques(request):
+    """Tableau de bord analytique réservé à la Direction / Administration :
+    moyennes par classe et par matière, taux de réussite, classement."""
+    import json
+    from django.db.models import Avg
+
+    annee = AnneeScolaire.objects.filter(active=True).first()
+    periodes = Periode.objects.filter(annee=annee).order_by('date_debut') if annee else Periode.objects.none()
+    periode_id = request.GET.get('periode')
+    periode_sel = periodes.filter(pk=periode_id).first() if periode_id else None
+
+    ctx = {'annee_active': annee, 'periodes': periodes, 'periode_sel': periode_sel, 'a_donnees': False}
+
+    if not annee:
+        return render(request, 'personnel/statistiques.html', ctx)
+
+    resultats = ResultatMatiere.objects.filter(cours__annee=annee, moyenne__isnull=False)
+    if periode_sel:
+        resultats = resultats.filter(periode=periode_sel)
+
+    # Moyenne générale par élève (moyenne de ses moyennes-matières)
+    moy_par_eleve = {
+        r['eleve']: float(r['moy'])
+        for r in resultats.values('eleve').annotate(moy=Avg('moyenne'))
+        if r['moy'] is not None
+    }
+    nb_evalues = len(moy_par_eleve)
+    ctx['a_donnees'] = nb_evalues > 0
+
+    # élève -> classe (année active)
+    eleve_classe = {
+        i.eleve_id: i.classe
+        for i in Inscription.objects.filter(annee=annee, statut='actif').select_related('classe')
+    }
+
+    # Stats par classe (moyenne + taux de réussite)
+    classe_moys = {}
+    for eid, m in moy_par_eleve.items():
+        cl = eleve_classe.get(eid)
+        if cl:
+            classe_moys.setdefault(cl, []).append(m)
+    classes_stats = []
+    for cl, vals in classe_moys.items():
+        classes_stats.append({
+            'classe': cl.nom,
+            'moy': round(sum(vals) / len(vals), 2),
+            'taux': round(sum(1 for v in vals if v >= 10) / len(vals) * 100, 1),
+            'effectif': len(vals),
+        })
+    classes_stats.sort(key=lambda x: x['moy'], reverse=True)
+
+    # Stats par matière
+    matieres_stats = [
+        {'matiere': r['cours__matiere__nom_matiere'], 'moy': round(float(r['moy']), 2)}
+        for r in resultats.values('cours__matiere__nom_matiere').annotate(moy=Avg('moyenne')).order_by('-moy')
+        if r['moy'] is not None
+    ]
+
+    # Répartition des moyennes générales par tranches
+    tranches = [0, 0, 0, 0, 0]  # <8, 8-10, 10-12, 12-14, >=14
+    for m in moy_par_eleve.values():
+        if m < 8:    tranches[0] += 1
+        elif m < 10: tranches[1] += 1
+        elif m < 12: tranches[2] += 1
+        elif m < 14: tranches[3] += 1
+        else:        tranches[4] += 1
+
+    # Classement (meilleurs / plus faibles)
+    noms = {p.pk: p.get_full_name() for p in Personne.objects.filter(pk__in=moy_par_eleve.keys())}
+    classement = sorted(moy_par_eleve.items(), key=lambda kv: kv[1], reverse=True)
+
+    def _ligne(kv):
+        eid, m = kv
+        cl = eleve_classe.get(eid)
+        return {'nom': noms.get(eid, '—'), 'classe': cl.nom if cl else '—', 'moy': round(m, 2)}
+
+    top5 = [_ligne(kv) for kv in classement[:5]]
+    flop5 = [_ligne(kv) for kv in classement[-5:][::-1]] if len(classement) > 5 else []
+
+    moy_etab = resultats.aggregate(m=Avg('moyenne'))['m']
+    nb_reussite = sum(1 for m in moy_par_eleve.values() if m >= 10)
+
+    ctx.update({
+        'moy_etab': round(float(moy_etab), 2) if moy_etab is not None else None,
+        'nb_evalues': nb_evalues,
+        'nb_reussite': nb_reussite,
+        'taux_reussite': round(nb_reussite / nb_evalues * 100, 1) if nb_evalues else 0,
+        'meilleure_classe': classes_stats[0] if classes_stats else None,
+        'classes_stats': classes_stats,
+        'matieres_stats': matieres_stats,
+        'top5': top5,
+        'flop5': flop5,
+        'chart_classes_labels': json.dumps([c['classe'] for c in classes_stats]),
+        'chart_classes_moy': json.dumps([c['moy'] for c in classes_stats]),
+        'chart_classes_taux': json.dumps([c['taux'] for c in classes_stats]),
+        'chart_mat_labels': json.dumps([m['matiere'] for m in matieres_stats]),
+        'chart_mat_moy': json.dumps([m['moy'] for m in matieres_stats]),
+        'chart_tranches': json.dumps(tranches),
+    })
+    return render(request, 'personnel/statistiques.html', ctx)
+
+
+@role_required('DIRECTION', 'ADMINISTRATION', 'SCOLARITE')
 def gestion_edt(request):
     annee_active = AnneeScolaire.objects.filter(active=True).first()
     classes = Classe.objects.filter(annee=annee_active).order_by('nom') if annee_active else Classe.objects.none()

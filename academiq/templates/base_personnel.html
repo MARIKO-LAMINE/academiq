@@ -16,6 +16,14 @@
             </a>
         </li>
         {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
+        <li class="nav-item mb-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'statistiques' %}active{% endif %}"
+               href="{% url 'personnel:statistiques' %}">
+                <i class="bi bi-graph-up-arrow"></i> Statistiques
+            </a>
+        </li>
+        {% endif %}
+        {% if 'DIRECTION' in groupes_user or 'ADMINISTRATION' in groupes_user or 'SCOLARITE' in groupes_user %}
         <li class="nav-item"><div class="text-white-50 small px-2 mt-3 mb-1 text-uppercase" style="font-size:.7rem">Administration</div></li>
 
         {% if 'DIRECTION' in groupes_user or 'SCOLARITE' in groupes_user %}

@@ -5,6 +5,7 @@ app_name = 'personnel'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('statistiques/', views.statistiques, name='statistiques'),
     # Années
     path('annees/', views.gestion_annees, name='gestion_annees'),
     path('annees/<int:pk>/activer/', views.activer_annee, name='activer_annee'),
